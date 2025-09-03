@@ -16,6 +16,9 @@
     mongoose.connect(URL,{ useNewUrlParser: true, useUnifiedTopology: true }).then(console.log('MongoDB is connected')).catch((err)=>{console.log('Server Error',err)})
 
     app.use('/api/',Router)
+    app.get('/', (req, res) => {
+    res.send('Backend is live!');
+});
 
     app.listen(PORT,()=>{
          console.log(` Server running on port ${PORT}`);
