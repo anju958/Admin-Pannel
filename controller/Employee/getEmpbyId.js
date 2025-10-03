@@ -20,4 +20,23 @@ const getEmpdatabyID = async (req, res) => {
     }
 };
 
-module.exports = { getEmpdatabyID };
+const getEmployeesByDepartment = async (req, res) => {
+  try {
+    const deptId = req.params.deptId;
+    if (!deptId || deptId === "undefined") {
+      return res.status(400).json({ message: "Invalid Department ID" });
+    }
+
+    const employees = await SignUp.find({ department: deptId });
+    res.json(employees);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
+module.exports = { getEmployeesByDepartment ,getEmpdatabyID };
+
+
+

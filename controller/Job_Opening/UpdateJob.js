@@ -1,4 +1,3 @@
-
 const JobOpening = require("../../model/JobOpening/JobOpening");
 
 const updateVacancy = async (req, res) => {
@@ -9,17 +8,21 @@ const updateVacancy = async (req, res) => {
     const job = await JobOpening.findOne({ jobId });
     if (!job) return res.status(404).json({ message: "Job not found" });
     
-    if (job.availableVacancies <= 0 && count > 0) {
+    if (job.availableVacancies <= 0 && count > 0) { 
       return res.status(400).json({ message: "No vacancies available" });
     }
-
 
     job.selected_emp += count; 
     job.availableVacancies = job.no_of_Opening - job.selected_emp;
 
     await job.save();
 
-    res.status(200).json({ message: "Vacancy updated", job });
+    // fetch updated job with populated fields
+    const populatedJob = await JobOpening.findOne({ jobId })
+      .populate("department", "deptName")
+      .populate("service", "serviceName");
+
+    res.status(200).json({ message: "Vacancy updated", job: populatedJob });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -19,5 +19,20 @@ const ConvertToClient = async (req, res) => {
         res.status(500).json({ error: error.message });  
     }
 };
+const updateStatus = async(req, res)=>{
+    try {
+    const { status, customStatus } = req.body;
 
-module.exports = { ConvertToClient };
+    const updatedLead = await Lead.findByIdAndUpdate(
+      req.params.id,
+      { status, customStatus: status === "Other" ? customStatus : "" },
+      { new: true }
+    );
+
+    res.json(updatedLead);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+module.exports = { ConvertToClient , updateStatus};

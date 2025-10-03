@@ -1,16 +1,6 @@
 const mongoose = require('mongoose')
 const Counter = require('../Counter/Counter')
 
-const PermissionSchema = new mongoose.Schema({
-    module: { type: String, required: true }, 
-    actions: {
-        add: { type: Boolean, default: false },
-        edit: { type: Boolean, default: false },
-        view: { type: Boolean, default: false },
-        delete: { type: Boolean, default: false }
-    }
-}, { _id: false });
-
 const SignUpSchema = new mongoose.Schema({
     ename: {
         type: String,
@@ -18,7 +8,16 @@ const SignUpSchema = new mongoose.Schema({
     },
     dateOfBirth: {
         type: Date,
-        
+       validate: {
+    validator: function (v) {
+      if (!v) return false;
+      const year = v.getFullYear();
+      // allow only 1900–2100
+      return year >= 1900 && year <= 2100;
+    },
+    message: props => `${props.value} is not a valid date!`
+  }
+
     },
     gender: {
         type: String,
@@ -82,21 +81,39 @@ const SignUpSchema = new mongoose.Schema({
     expWithPWT: {
         type: String
     },
-    deptName: {
-        type: String,
-        required: false
+    department: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "department"
     },
-    designation: {
-        type: String,
-        required: false
+    service: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "service"
     },
     interviewDate: {
         type: Date,
-        required: false
+        required: false,
+       validate: {
+    validator: function (v) {
+      if (!v) return false;
+      const year = v.getFullYear();
+      // allow only 1900–2100
+      return year >= 1900 && year <= 2100;
+    },
+    message: props => `${props.value} is not a valid date!`
+  }
     },
     joiningDate: {
         type: Date,
-        required: false
+        required: false,
+        validate: {
+    validator: function (v) {
+      if (!v) return false;
+      const year = v.getFullYear();
+      // allow only 1900–2100
+      return year >= 1900 && year <= 2100;
+    },
+    message: props => `${props.value} is not a valid date!`
+  }
     },
     expectedSalary: {
         type: Number,
@@ -113,6 +130,9 @@ const SignUpSchema = new mongoose.Schema({
         type: String,
         required: false
     },
+    img: {
+        type: String,
+    },
     userType: {
         type: String,
         enum: ["trainee", "employee", "intern"],
@@ -122,6 +142,7 @@ const SignUpSchema = new mongoose.Schema({
     traineeDuration: {
         type: String
     },
+
     employeeId: { type: String, unique: true },
 
 }, { timestamps: true });

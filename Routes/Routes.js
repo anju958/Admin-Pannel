@@ -1,52 +1,133 @@
- const express = require('express'); 
-const uploads = require('../controller/middleware/multer')
-const { SignUpController } = require('../controller/SignUp/SignUp');
-const { LoginAdmin } = require('../controller/Login/Login');
-const { getEmployeeData } = require('../controller/Employee/getEmployee');
-const { Dept_Name, get_Dept, get_Dept_Name, get_designation } = require('../controller/Department_Name/DepartmentName');
-const { Job_Opening, get_JobOpening } = require('../controller/Job_Opening/JobOpening');
-const { job_data } = require('../Update_job_no/Update_job_no');
-const { getTrainee } = require('../controller/Employee/getTraniee');
-const {  updateUser, deleteUser } = require('../controller/SignUp/SignUpDelandUpdate');
-const { UpdateType } = require('../controller/SignUp/UpdateUserType');
-const {  Get_ClientLead, Gen_ClientLead, deleteLead } = require('../controller/ClientLead/ClientLeadData');
-const { Get_Lead, Get_Client } = require('../controller/ClientLead/getClient');
-const { updateVacancy } = require('../controller/Job_Opening/UpdateJob');
-const { getEmpdatabyID } = require('../controller/Employee/getEmpbyId');
-const { ConvertToClient } = require('../controller/ClientLead/ConverttoClient');
-const { updateClientUser, deleteClientUser } = require('../controller/ClientLead/UpdateClientLead');
-const { add_attendance, getAttendance } = require('../controller/Attendance/Attendance');
-const { UserLogin } = require('../controller/UserLogin/UserLogin');
-const Router=express.Router();
 
-Router.post('/signUp', uploads.single('resumeFile'),SignUpController);
-Router.post('/adminLogin',LoginAdmin);
-Router.get('/getemployeeData',getEmployeeData)
-Router.post('/add_department',Dept_Name);
-Router.post('/addJob',Job_Opening)
-Router.get('/get_Jobs',get_JobOpening)
-Router.get('/get_Department',get_Dept)
-Router.get('/getDepartmentNamee',get_Dept_Name)
-Router.get('/getDesignation',get_designation)
-Router.get('/getjobvacancy',job_data)
-Router.get('/getTraniee',getTrainee)
+const express = require("express");
+const uploadTo = require("../controller/middleware/multer");
 
-Router.put('/updateSignUser/:employeeId', uploads.single("resumeFile"), updateUser)
-Router.delete('/deleteSignUpUser/:employeeId',deleteUser)
-Router.put('/movetoemployee/:employeeId', UpdateType)
-Router.post('/genClientLead',Gen_ClientLead)
-Router.get('/getClientLead' , Get_ClientLead)
-Router.get('/getLeadData',Get_Lead)
-Router.get('/getClientData' , Get_Client)
-Router.put('/updateVacancy/:jobId',updateVacancy)
-Router.get('/getEmpDataByID/:employeeId',getEmpdatabyID)
-Router.put('/moveleadtoClient/:leadId',ConvertToClient)
-Router.delete('/DeleteLead/:leadId' , deleteLead)
-Router.put('/updateClientLead/:leadId' , updateClientUser)
-Router.delete('/deleteClientLead/:leadId',deleteClientUser)
-Router.post('/add_attendance',add_attendance)
-Router.get('/get_attendance' , getAttendance)
-Router.post('/userLogin',UserLogin)
+const { SignUpController, getEmployeesByService } = require("../controller/SignUp/SignUp");
+const { LoginAdmin } = require("../controller/Login/Login");
+const { getEmployeeData } = require("../controller/Employee/getEmployee");
+const { addDepartment, getDepartments, updateDepartment, getDepartmentByid, deleteDepartment } = require("../controller/DepartmentName/DepartmentName");
+const { Job_Opening, get_JobOpening, DeleteJob } = require("../controller/Job_Opening/JobOpening");
+const { job_data } = require("../Update_job_no/Update_job_no");
+const {  getTraineeData } = require("../controller/Employee/getTraniee");
+const { updateUser, deleteUser } = require("../controller/SignUp/SignUpDelandUpdate");
+const { UpdateType } = require("../controller/SignUp/UpdateUserType");
+const { Get_ClientLead, Gen_ClientLead, deleteLead, getLeadById } = require("../controller/ClientLead/ClientLeadData");
+const { Get_Lead, Get_Client, getClientLeadById } = require("../controller/ClientLead/getClient");
+const { updateVacancy } = require("../controller/Job_Opening/UpdateJob");
+const { getEmpdatabyID, getEmployeesByDepartment } = require("../controller/Employee/getEmpbyId");
+const { ConvertToClient, updateStatus } = require("../controller/ClientLead/ConverttoClient");
+const { updateClientUser, deleteClientUser } = require("../controller/ClientLead/UpdateClientLead");
+const { add_attendance, getAttendance } = require("../controller/Attendance/Attendance");
+const { UserLogin } = require("../controller/UserLogin/UserLogin");
+const { add_leave, get_leaves } = require("../controller/User/Leave/Leave");
+const { addService, getAllServices, getServicesByDept, deleteService, updateService, getServicebyId } = require("../controller/Service/Service");
+const { createProject, getProject, getProjectById, getProjectsByClient, getProjectByProjectId, updateProject, deleteProject } = require("../controller/Projects/Projects");
+const { getServicebyDepartment } = require("../controller/DepartmentServiceAPI/getDepartmentService");
+const { createInvoice, getInvoicesByClient, getAllInvoice, sendInvoiceEmail } = require("../controller/Invoice/Invoice");
+const { createAndSendProposal, upload, getAllProposals, updateProposal, getProposalById, deleteProposal } = require("../controller/Purposal/Purposal");
+const { sendInvoiceForPayment, verifyPayment } = require("../controller/Payment/PaymentController");
+const { razorpayWebhook } = require("../controller/Payment/razorpayWebhook");
 
+
+
+
+
+const Router = express.Router();
+
+// ---------- FILE UPLOAD ROUTES ----------
+Router.post(
+  "/signUp",
+  uploadTo().fields([
+    { name: "resumeFile", maxCount: 1 },
+    { name: "img", maxCount: 1 },
+  ]),
+  SignUpController
+);
+
+Router.post("/proposals", upload.array("attachments"), createAndSendProposal );
+Router.put('/UpdateProposal/:id', upload.array("attachments"),updateProposal)
+Router.delete('/DeleteProposal/:id',deleteProposal)
+Router.get('/getProposalById/:id',getProposalById)
+
+Router.get('/getAllProposal' , getAllProposals)
+
+
+Router.post("/addProject", uploadTo().single("addFile"), createProject);
+
+Router.put(
+  "/updateSignUser/:employeeId",
+  uploadTo().fields([
+    { name: "resumeFile", maxCount: 1 },
+    { name: "img", maxCount: 1 },
+  ]),
+  updateUser
+)
+
+//------payment Routes --------
+
+Router.post('/sendInvoice/:invoiceId',sendInvoiceForPayment)
+Router.get('/getAllInvoice',getAllInvoice)
+
+Router.get('/verifyPayment', verifyPayment);
+
+Router.post("/createInvoice/:clientId", createInvoice);
+
+
+
+// ---------- NORMAL ROUTES ----------
+
+
+Router.get("/getEmployeeByService/:serviceId", getEmployeesByService);
+Router.post("/adminLogin", LoginAdmin);
+Router.get("/getemployeeData", getEmployeeData);
+Router.post("/addDepartment", addDepartment);
+Router.get("/getDepartment", getDepartments);
+Router.get('/getEmployeeByDepartment/:deptId',getEmployeesByDepartment)
+Router.get("/getServicebyDepartment/:deptId", getServicebyDepartment);
+Router.post("/addJob", Job_Opening);
+Router.delete('/deleteJob/:id',DeleteJob)
+Router.get("/get_Jobs", get_JobOpening);
+Router.put('/updateDepartment/:id',updateDepartment)
+Router.delete('/deleteDepartment/:id', deleteDepartment)
+Router.get('/getDepartmentById/:id',getDepartmentByid)
+Router.post("/addService", addService);
+Router.get("/getServices", getAllServices);
+Router.get('/getServiceById/:id',getServicebyId)
+Router.get("/serviceById/:deptId", getServicesByDept);
+Router.delete('/deleteService/:id',deleteService)
+Router.put('/UpdateService/:id',updateService)
+Router.get("/getProjects", getProject);
+Router.put('/updateProject/:id',updateProject)
+Router.get("/getProjectById/:clientId/:projectId", getProjectById);
+Router.delete('/deleteProjectById/:id' , deleteProject)
+Router.post("/createInvoice/:clientId", createInvoice);
+Router.get("/getProjectbyClient/:clientId", getProjectsByClient);
+Router.get('/getprojectByPorjectId/:projectId',getProjectByProjectId)
+Router.get("/getjobvacancy", job_data);
+
+Router.get('/getTraineeData',getTraineeData)
+Router.delete("/deleteSignUpUser/:employeeId", deleteUser);
+Router.put("/movetoemployee/:employeeId", UpdateType);
+Router.post("/genClientLead", Gen_ClientLead);
+Router.get("/getClientLead", Get_ClientLead);
+
+Router.get('/leadById/:id',getLeadById)
+
+Router.put('/updateStatus/:id',updateStatus)
+Router.get("/getLeadData", Get_Lead);
+Router.get("/getClientData", Get_Client);
+
+Router.put("/updateVacancy/:jobId", updateVacancy);
+Router.get("/getEmpDataByID/:employeeId", getEmpdatabyID);
+Router.put("/moveleadtoClient/:leadId", ConvertToClient);
+Router.delete("/DeleteLead/:leadId", deleteLead);
+Router.put("/updateClientLead/:leadId", updateClientUser);
+Router.delete("/deleteClientLead/:leadId", deleteClientUser);
+Router.get("/getClientLeadbyId/:leadId", getClientLeadById);
+Router.post("/add_attendance", add_attendance);
+Router.get("/get_attendance", getAttendance);
+Router.post("/userLogin", UserLogin);
+Router.post("/addLeave", add_leave);
+Router.get("/getLeave", get_leaves);
 
 module.exports = Router;

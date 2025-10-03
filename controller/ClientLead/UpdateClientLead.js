@@ -4,7 +4,7 @@ const updateClientUser = async (req, res) => {
     try {
         
         const UpdateUser = await ClientLead.findOneAndUpdate(
-            { leadId: req.params.leadId },
+            { leadId: req.params.leadId.trim() },
             req.body,
             { new: true }
         );
