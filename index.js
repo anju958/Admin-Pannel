@@ -5,6 +5,7 @@ const express = require('express')
 require('dotenv').config();
 const path = require('path')
 
+// <<<<<<< HEAD
 const app = express()
 app.use(cors());
 app.use(express.json());
@@ -37,3 +38,13 @@ app.get(/^\/(?!api).*/, (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
+//     app.use('/api/',Router)
+//     app.get('/', (req, res) => {
+//     res.send('Backend is live!');
+// });
+
+//     app.listen(PORT,()=>{
+//          console.log(` Server running on port ${PORT}`);
+//     })
+// >>>>>>> 7a6c921f925aec7416754c1fcc3ad03ad6c683f5
