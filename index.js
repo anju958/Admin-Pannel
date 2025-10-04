@@ -26,14 +26,17 @@ mongoose.connect(URL, { useNewUrlParser: true, useUnifiedTopology: true })
 app.use('/api', Router);
 
 // --- Serve React frontend only for non-API routes ---
-const frontendPath = path.resolve(__dirname, "../frontend/build");
-app.use(express.static(frontendPath));
+// const frontendPath = path.resolve(__dirname, "../frontend/build");
+// app.use(express.static(frontendPath));
 
-// Only match non-API routes
-app.get(/^\/(?!api).*/, (req, res) => {
-  res.sendFile(path.join(frontendPath, "index.html"));
+// // Only match non-API routes
+// app.get(/^\/(?!api).*/, (req, res) => {
+//   res.sendFile(path.join(frontendPath, "index.html"));
+// });
+
+app.get("/", (req, res) => {
+  res.send("✅ Backend is live on Render!");
 });
-
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
