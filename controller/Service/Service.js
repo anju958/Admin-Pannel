@@ -1,5 +1,6 @@
   const Service = require('../../model/Services/Service');
   const Department = require('../../model/Department/AddDepartment');
+  const Project = require('../../model/Project/Projects')
 
 
   const addService = async (req, res) => {
@@ -98,4 +99,20 @@
 };
 
 
-  module.exports = { addService, getServicesByDept, getAllServices  , deleteService  , updateService , getServicebyId};
+const getServiceByProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const project = await Project.findById(projectId).populate("service", "serviceName");
+    if (!project) return res.status(404).json({ message: "Project not found" });
+
+    res.status(200).json({
+      message: "Services fetched successfully",
+      services: [project.service],
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+
+  module.exports = { addService, getServicesByDept, getAllServices  , deleteService  , updateService , getServicebyId , getServiceByProject};

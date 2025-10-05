@@ -20,13 +20,15 @@ const { updateClientUser, deleteClientUser } = require("../controller/ClientLead
 const { add_attendance, getAttendance } = require("../controller/Attendance/Attendance");
 const { UserLogin } = require("../controller/UserLogin/UserLogin");
 const { add_leave, get_leaves } = require("../controller/User/Leave/Leave");
-const { addService, getAllServices, getServicesByDept, deleteService, updateService, getServicebyId } = require("../controller/Service/Service");
-const { createProject, getProject, getProjectById, getProjectsByClient, getProjectByProjectId, updateProject, deleteProject } = require("../controller/Projects/Projects");
+const { addService, getAllServices, getServicesByDept, deleteService, updateService, getServicebyId, getServiceByProject } = require("../controller/Service/Service");
+const { createProject, getProject, getProjectById, getProjectsByClient, getProjectByProjectId, updateProject, deleteProject, getServicebyProjectId, getAssignEmpByService, getEmployeesByProjectId, getProjectDetailById } = require("../controller/Projects/Projects");
 const { getServicebyDepartment } = require("../controller/DepartmentServiceAPI/getDepartmentService");
 const { createInvoice, getInvoicesByClient, getAllInvoice, sendInvoiceEmail } = require("../controller/Invoice/Invoice");
 const { createAndSendProposal, upload, getAllProposals, updateProposal, getProposalById, deleteProposal } = require("../controller/Purposal/Purposal");
 const { sendInvoiceForPayment, verifyPayment } = require("../controller/Payment/PaymentController");
 const { razorpayWebhook } = require("../controller/Payment/razorpayWebhook");
+const { addTask, getAllTasks, updateTask, deleteTask } = require("../controller/Task/Task");
+const { notifyTask } = require("../controller/Notification/NotifyTask");
 
 
 
@@ -105,15 +107,31 @@ Router.get("/getProjectbyClient/:clientId", getProjectsByClient);
 Router.get('/getprojectByPorjectId/:projectId',getProjectByProjectId)
 Router.get("/getjobvacancy", job_data);
 
+//Task api
+Router.post('/addTask',addTask)
+
 Router.get('/getTraineeData',getTraineeData)
 Router.delete("/deleteSignUpUser/:employeeId", deleteUser);
 Router.put("/movetoemployee/:employeeId", UpdateType);
 Router.post("/genClientLead", Gen_ClientLead);
 Router.get("/getClientLead", Get_ClientLead);
 
+//Notification
+Router.post('/notifyTask',notifyTask)
+Router.delete('/deleteTask/:id',deleteTask)
+
+
+Router.get('/getServices/:projectId' ,getServiceByProject)
+Router.get('/getProjectDetails/:projectId',getProjectDetailById);
+Router.get('/getAllTasks',getAllTasks)
+// Router.get('/employees/:serviceId', getAssignEmpByService)
+Router.get('/getEmployeeByProject/:projectId',getEmployeesByProjectId)
+
 Router.get('/leadById/:id',getLeadById)
 
 Router.put('/updateStatus/:id',updateStatus)
+
+Router.put('/UpdateTask/:id',updateTask)
 Router.get("/getLeadData", Get_Lead);
 Router.get("/getClientData", Get_Client);
 

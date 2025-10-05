@@ -1,5 +1,7 @@
 
 const mongoose = require('mongoose')
+const http = require("http");
+const { initSocket } = require("./socket");
 const cors = require('cors')
 const express = require('express')
 require('dotenv').config();
@@ -37,9 +39,17 @@ app.use('/api', Router);
 app.get("/", (req, res) => {
   res.send("✅ Backend is live on Render!");
 });
+const server = http.createServer(app);
+const io = initSocket(server);
+app.set("io", io); 
+
+
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+// app.listen(PORT, () => {
+//   console.log(`🚀 Server running on port ${PORT}`);
+// });
+server.listen(PORT, () => {
+  console.log(`🚀 Server + Socket running on port ${PORT}`);
 });
 
 //     app.use('/api/',Router)

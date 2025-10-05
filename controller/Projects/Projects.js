@@ -202,7 +202,72 @@ const deleteProject = async (req, res) => {
     console.error("Delete project error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
+
+
 };
+
+
+const getEmployeesByProjectId = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    // Find project by _id
+    const project = await Project.findById(projectId)
+      .populate("addMember", "ename official_email personal_email phoneNo userType department service");
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    if (!project.addMember || project.addMember.length === 0) {
+      return res.status(200).json({
+        message: "No employees assigned to this project",
+        employees: []
+      });
+    }
+
+    res.status(200).json({
+      message: "Employees fetched successfully",
+      projectName: project.projectName,
+      employees: project.addMember
+    });
+  } catch (error) {
+    console.error("Error fetching employees by project:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message
+    });
+  }
+};
+
+const getProjectDetailById = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    // Find project by _id
+    const project = await Project.findById(projectId);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    res.status(200).json({
+      message: "Project details fetched successfully",
+      projectCategory: project.projectCategory,
+      startDate: project.startDate,
+      endDate: project.endDate,
+      projectName: project.projectName
+    });
+  } catch (error) {
+    console.error("Error fetching project details:", error);
+    res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message
+    });
+  }
+};
+
+
 
 
 
@@ -213,5 +278,7 @@ module.exports = {
   getProject,
   getProjectById,
   getProjectsByClient,
-  deleteProject
+  deleteProject,
+  getEmployeesByProjectId,
+  getProjectDetailById
 };
