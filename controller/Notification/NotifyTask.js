@@ -1,6 +1,5 @@
-
 const Task = require('../../model/Task/Task');
-const Notification = require('../../model/Notification/Notification');
+const Notifiy = require('../../model/Notification/Notice'); // your Notice model
 
 const notifyTask = async (req, res) => {
   try {
@@ -16,27 +15,38 @@ const notifyTask = async (req, res) => {
     let createdCount = 0;
 
     for (const employee of task.assignedTo) {
-      // Create a new notification for every click
-      const notification = new Notification({
-        userId: employee._id, // required
-        taskId: task._id,
-        message: `Task "${task.title}" has been updated!`,
+      // Create a new notice for each employee
+      const notice = new Notifiy({
+        title: `Task Updated: ${task.title}`,
+        description: `Task "${task.title}" has been updated and assigned to you.`,
+        category: "Task",
+        createdBy: task.createdBy, // optional if you have creator info
+        targets: {
+          all: false,
+          employees: [employee._id]
+        },
+        notifyVia: {
+          email: false, // set true if you want email notification
+          inApp: true,
+          push: false
+        }
       });
 
-      await notification.save(); // save in DB
+      await notice.save(); // save in DB
       createdCount++;
 
-      // Emit notification in real-time via Socket.io
+      // Emit real-time notification via Socket.io
       if (global.io) {
         global.io.to(employee._id.toString()).emit('newNotification', {
-          message: `Task "${task.title}" has been updated!`,
-          taskId: task._id,
+          title: notice.title,
+          description: notice.description,
+          noticeId: notice._id,
         });
       }
     }
 
     res.json({
-      message: 'Notification(s) created and emitted',
+      message: 'Notice(s) created and emitted successfully',
       createdCount,
     });
   } catch (err) {

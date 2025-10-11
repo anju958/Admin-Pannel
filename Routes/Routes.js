@@ -29,6 +29,7 @@ const { sendInvoiceForPayment, verifyPayment } = require("../controller/Payment/
 const { razorpayWebhook } = require("../controller/Payment/razorpayWebhook");
 const { addTask, getAllTasks, updateTask, deleteTask } = require("../controller/Task/Task");
 const { notifyTask } = require("../controller/Notification/NotifyTask");
+const { sendNotification, getNotifications, markAsRead, getAllNotifications, deleteNotice } = require("../controller/Notification/Notification");
 
 
 
@@ -117,8 +118,17 @@ Router.post("/genClientLead", Gen_ClientLead);
 Router.get("/getClientLead", Get_ClientLead);
 
 //Notification
-Router.post('/notifyTask',notifyTask)
+Router.post('/notifyTask', notifyTask)
 Router.delete('/deleteTask/:id',deleteTask)
+
+
+//notification 
+
+Router.post('/sendNotification', sendNotification)
+Router.get('/getNotification/:userId' , getNotifications)
+Router.put('/read/:notificationId' , markAsRead)
+Router.get('/getAllNotifications',getAllNotifications)
+Router.delete('/deleteNotice/:id' ,  deleteNotice)
 
 
 Router.get('/getServices/:projectId' ,getServiceByProject)
