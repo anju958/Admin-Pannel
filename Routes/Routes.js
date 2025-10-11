@@ -125,7 +125,7 @@ Router.delete('/deleteTask/:id',deleteTask)
 //notification 
 
 Router.post('/sendNotification', sendNotification)
-Router.get('/getNotification/:userId' , getNotifications)
+// Router.get('/getNotification/:userId' , getNotifications)
 Router.put('/read/:notificationId' , markAsRead)
 Router.get('/getAllNotifications',getAllNotifications)
 Router.delete('/deleteNotice/:id' ,  deleteNotice)
