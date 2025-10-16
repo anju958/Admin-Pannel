@@ -23,13 +23,20 @@ const { add_leave, get_leaves } = require("../controller/User/Leave/Leave");
 const { addService, getAllServices, getServicesByDept, deleteService, updateService, getServicebyId, getServiceByProject } = require("../controller/Service/Service");
 const { createProject, getProject, getProjectById, getProjectsByClient, getProjectByProjectId, updateProject, deleteProject, getServicebyProjectId, getAssignEmpByService, getEmployeesByProjectId, getProjectDetailById } = require("../controller/Projects/Projects");
 const { getServicebyDepartment } = require("../controller/DepartmentServiceAPI/getDepartmentService");
-const { createInvoice, getInvoicesByClient, getAllInvoice, sendInvoiceEmail } = require("../controller/Invoice/Invoice");
-const { createAndSendProposal, upload, getAllProposals, updateProposal, getProposalById, deleteProposal } = require("../controller/Purposal/Purposal");
-const { sendInvoiceForPayment, verifyPayment } = require("../controller/Payment/PaymentController");
-const { razorpayWebhook } = require("../controller/Payment/razorpayWebhook");
+const { createAndSendProposal, upload, getAllProposals, updateProposal, getProposalById, deleteProposal, approveProposal } = require("../controller/Purposal/Purposal");
 const { addTask, getAllTasks, updateTask, deleteTask } = require("../controller/Task/Task");
 const { notifyTask } = require("../controller/Notification/NotifyTask");
 const { sendNotification, getNotifications, markAsRead, getAllNotifications, deleteNotice } = require("../controller/Notification/Notification");
+const router = require("./Roles");
+const { updateCompany, createCompany, getCompany } = require("../controller/CompanyDetails/CompanyDetails");
+
+// const { createInvoice, markInvoicePaid } = require("../controller/Payment/PaymentController");
+
+
+const {getAllInvoices, getInvoiceById, deleteInvoice ,createInvoice , markInvoicePaid} = require('../controller/Invoice/Invoice');
+const { getReportsSummary } = require("../controller/Reports/Reports");
+const { getAdminSummary } = require("../controller/Summary/Summary");
+
 
 
 
@@ -66,19 +73,26 @@ Router.put(
   updateUser
 )
 
-//------payment Routes --------
+//Reports
+Router.get('/reports/summary',getReportsSummary)
 
-Router.post('/sendInvoice/:invoiceId',sendInvoiceForPayment)
-Router.get('/getAllInvoice',getAllInvoice)
+//Invoice Routes
+Router.get('/getAllInvoices', getAllInvoices );
+Router.get('/getInvoiceById/:id',getInvoiceById);
+Router.put('/markpaid/:id',markInvoicePaid);
+Router.delete('/deleteInvoice/:id', deleteInvoice)
 
-Router.get('/verifyPayment', verifyPayment);
 
-Router.post("/createInvoice/:clientId", createInvoice);
+Router.patch('/approvalproposal/:id' , approveProposal)
 
 
+Router.post("/createInvoice", createInvoice);
+
+Router.get('/AdminSummary/',getAdminSummary)
 
 // ---------- NORMAL ROUTES ----------
 
+Router.use('/roles',router)
 
 Router.get("/getEmployeeByService/:serviceId", getEmployeesByService);
 Router.post("/adminLogin", LoginAdmin);
@@ -125,7 +139,6 @@ Router.delete('/deleteTask/:id',deleteTask)
 //notification 
 
 Router.post('/sendNotification', sendNotification)
-// Router.get('/getNotification/:userId' , getNotifications)
 Router.put('/read/:notificationId' , markAsRead)
 Router.get('/getAllNotifications',getAllNotifications)
 Router.delete('/deleteNotice/:id' ,  deleteNotice)
@@ -134,12 +147,16 @@ Router.delete('/deleteNotice/:id' ,  deleteNotice)
 Router.get('/getServices/:projectId' ,getServiceByProject)
 Router.get('/getProjectDetails/:projectId',getProjectDetailById);
 Router.get('/getAllTasks',getAllTasks)
-// Router.get('/employees/:serviceId', getAssignEmpByService)
 Router.get('/getEmployeeByProject/:projectId',getEmployeesByProjectId)
 
 Router.get('/leadById/:id',getLeadById)
 
 Router.put('/updateStatus/:id',updateStatus)
+
+//company details 
+Router.post('/companyDetails', createCompany)
+Router.get('/getCompnayDetails' , getCompany)
+Router.put('/updateCompnay/:id',updateCompany)
 
 Router.put('/UpdateTask/:id',updateTask)
 Router.get("/getLeadData", Get_Lead);
@@ -152,8 +169,12 @@ Router.delete("/DeleteLead/:leadId", deleteLead);
 Router.put("/updateClientLead/:leadId", updateClientUser);
 Router.delete("/deleteClientLead/:leadId", deleteClientUser);
 Router.get("/getClientLeadbyId/:leadId", getClientLeadById);
+
+
 Router.post("/add_attendance", add_attendance);
 Router.get("/get_attendance", getAttendance);
+
+
 Router.post("/userLogin", UserLogin);
 Router.post("/addLeave", add_leave);
 Router.get("/getLeave", get_leaves);

@@ -1,33 +1,13 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const RoleSchema = new mongoose.Schema({
-  department: { type: String, required: true, unique: true },
-  permissions: {
-    jobOpening: {
-      add: Boolean,
-      edit: Boolean,
-      view: Boolean,
-      delete: Boolean,
-    },
-    employees: {
-      add: Boolean,
-      edit: Boolean,
-      view: Boolean,
-      delete: Boolean,
-    },
-    departmets: {
-      add: Boolean,
-      edit: Boolean,
-      view: Boolean,
-      delete: Boolean,
-    },
-    intern: {
-      add: Boolean,
-      edit: Boolean,
-      view: Boolean,
-      delete: Boolean,
-    },
-  },
+const ModuleSchema = new mongoose.Schema({
+  moduleName: String,
+  permissions: [String], // ["Add", "Edit", "View", "Delete"]
 });
 
-module.exports = mongoose.model("Role", RoleSchema);
+const RoleSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  modules: [ModuleSchema]
+});
+
+module.exports = mongoose.model('Role', RoleSchema);

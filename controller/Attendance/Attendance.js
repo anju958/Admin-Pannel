@@ -1,20 +1,16 @@
+
 const attendancee = require('../../model/Attendance/Attendance');
-const SignUp = require('../../model/SignUp/SignUp')
+const SignUp = require('../../model/SignUp/SignUp');
 
 const add_attendance = async (req, res) => {
   try {
-    const { empId, employeeId, date, check_in, check_out, status, remark } = req.body;
+    const { employeeId, date, check_in, check_out, status, remark } = req.body;
 
-    if ((!empId && !employeeId) || !date || !status) {
-      return res.status(400).json({ message: "empId/employeeId, date, status are required" });
+    if (!employeeId || !date || !status) {
+      return res.status(400).json({ message: "employeeId, date, status are required" });
     }
 
-    let employee;
-    if (empId) {
-      employee = await SignUp.findById(empId);
-    } else if (employeeId) {
-      employee = await SignUp.findOne({ employeeId });
-    }
+    const employee = await SignUp.findOne({ employeeId });
 
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
@@ -28,6 +24,7 @@ const add_attendance = async (req, res) => {
       {
         $set: {
           empId: employee._id,
+          date: d,
           check_in,
           check_out,
           status,
@@ -47,14 +44,12 @@ const add_attendance = async (req, res) => {
   }
 };
 
-
 const getAttendance = async (req, res) => {
   try {
     const data = await attendancee
       .find()
       .populate("empId", "employeeId ename designation")
       .sort({ date: -1, createdAt: -1 });
-     
 
     res.json(data);
   } catch (error) {
@@ -63,6 +58,4 @@ const getAttendance = async (req, res) => {
   }
 };
 
-
-module.exports = { add_attendance, getAttendance }
-
+module.exports = { add_attendance, getAttendance };

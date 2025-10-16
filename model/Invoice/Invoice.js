@@ -1,27 +1,24 @@
 
 const mongoose = require("mongoose");
 
-const InvoiceSchema = new mongoose.Schema({
+const invoiceSchema = new mongoose.Schema({
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: "ClientLeads", required: true },
-  clientEmail: { type: String, required: true },   // Added
-  clientName: { type: String, required: true },    // Added
+  clientEmail: { type: String, required: true },
+  clientName: { type: String, required: true },
   projects: [
     {
-      projectId: { type: mongoose.Schema.Types.ObjectId, ref: "projects" },
+      name: String,
       amount: Number,
-    }
+    },
   ],
   invoiceNumber: { type: String, unique: true },
-  date: { type: Date, default: Date.now },
-  dueDate: { type: Date },
   totalAmount: { type: Number, required: true },
-  status: { type: String, enum: ["Pending", "Paid"], default: "Pending" },
-
-  
-  razorpayPaymentLinkId: { type: String },   // e.g. plink_xxx
-  razorpayPaymentLink: { type: String },     // short_url (clickable URL)
-  paymentId: { type: String },               // pay_xxx
-  razorpaySignature: { type: String }, 
+  paidAmount: { type: Number, default: 0 },
+  status: { type: String, enum: ["Pending", "Partial", "Paid"], default: "Pending" },
+  remainingAmount: { type: Number, default: 0 },
+  dueDate: Date,
+  date: { type: Date, default: Date.now },
+  paidAt: Date,
 });
 
-module.exports = mongoose.model("Invoice", InvoiceSchema);
+module.exports = mongoose.model("Invoice", invoiceSchema);

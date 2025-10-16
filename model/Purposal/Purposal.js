@@ -4,25 +4,16 @@ const Counter = require('../Counter/Counter');
 const ProposalSchema = new mongoose.Schema({
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: "ClientLeads", required: true },
   title: String,
-  services: [
-   {
-      id: String,
-      name: String,
-      price: Number
-    }
-  ],
+  services: [{ id: String, name: String, price: Number }],
   description: String,
   category: [{ type: String }],
   price: Number,
   terms: String,
-  status: { type: String, enum: ["Draft", "Sent", "Accepted", "Rejected"], default: "Draft" },
- 
+  status: { type: String, enum: ["Draft", "Sent", "Accepted", "Rejected"], default: "Draft" }, // only used if not set!
   attachments: [String], 
   clientResponse: { type: String, default: "" },
-  purposalId:{
-    type:String
-  }
-},{ timestamps: true });
+  purposalId: { type: String }
+}, { timestamps: true });
 ProposalSchema.pre('save', async function (next) {
   if (!this.isNew || this.purposalId) return next();
 
