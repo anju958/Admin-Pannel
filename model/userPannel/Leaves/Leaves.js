@@ -1,42 +1,16 @@
-const mongoose = require('mongoose')
-const Counter = require('../../Counter/Counter')
+
+
+const mongoose = require('mongoose');
 
 const LeaveSchema = new mongoose.Schema({
-    leave_type:{
-        type:String,
-    },
-    from_date:{
-        type:Date
-    },
-    to_date:{
-        type:Date
-    },
-    reason:{
-        type:String
-    },
-    leaveId:{
-        type:String,
-         unique: true
-    }
-},{ timestamps: true })
-LeaveSchema.pre('save', async function (next) {
-    if (!this.isNew || this.leaveId) return next();
+  employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "SignUp", required: true },
+  leave_type: { type: String, required: true },
+  from_date: { type: Date, required: true },
+  to_date: { type: Date, required: true },
+  reason: { type: String, required: true },
+  status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" },
+  days: { type: Number },
+  leaveId: { type: String }
+}, { timestamps: true });
 
-    try {
-        const counter = await Counter.findOneAndUpdate(
-            { _id: 'leaveId' },
-            { $inc: { seq: 1 } },
-            { new: true, upsert: true }
-        );
-
-        const year = new Date().getFullYear();
-        const seqNum = String(counter.seq).padStart(5, '0');
-        this.leaveId = `Id${year}-${seqNum}`;
-        next();
-    } catch (err) {
-        next(err);
-    }
-});
-
-const Leaves = mongoose.model('leaves', LeaveSchema);
-module.exports = Leaves;
+module.exports = mongoose.models.leave || mongoose.model("leave", LeaveSchema);

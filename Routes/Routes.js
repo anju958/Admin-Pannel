@@ -19,7 +19,7 @@ const { ConvertToClient, updateStatus } = require("../controller/ClientLead/Conv
 const { updateClientUser, deleteClientUser } = require("../controller/ClientLead/UpdateClientLead");
 const { add_attendance, getAttendance } = require("../controller/Attendance/Attendance");
 const { UserLogin } = require("../controller/UserLogin/UserLogin");
-const { add_leave, get_leaves } = require("../controller/User/Leave/Leave");
+const { add_leave, get_leaves, getLeaves } = require("../controller/User/Leave/Leave");
 const { addService, getAllServices, getServicesByDept, deleteService, updateService, getServicebyId, getServiceByProject } = require("../controller/Service/Service");
 const { createProject, getProject, getProjectById, getProjectsByClient, getProjectByProjectId, updateProject, deleteProject, getServicebyProjectId, getAssignEmpByService, getEmployeesByProjectId, getProjectDetailById } = require("../controller/Projects/Projects");
 const { getServicebyDepartment } = require("../controller/DepartmentServiceAPI/getDepartmentService");
@@ -36,6 +36,11 @@ const { updateCompany, createCompany, getCompany } = require("../controller/Comp
 const {getAllInvoices, getInvoiceById, deleteInvoice ,createInvoice , markInvoicePaid} = require('../controller/Invoice/Invoice');
 const { getReportsSummary } = require("../controller/Reports/Reports");
 const { getAdminSummary } = require("../controller/Summary/Summary");
+const { getAllLeaves, getMonthlyAcceptedLeaves, getTotalProjects, addLeave } = require("../controller/UserPannel/Leaves/Leaves");
+const { getSalaryStats, getSalaryDetails } = require("../controller/User/Salary/Salary");
+const { getTasksByEmployee } = require("../controller/User/TaskAssign/TaskAssign");
+const { getEmployeeStats } = require("../model/userPannel/HomePage/HomePage");
+const { updateSelfProfile, getEmployeeById } = require("../controller/SignUp/UpdateEmplyeeSelf");
 
 
 
@@ -53,6 +58,14 @@ Router.post(
   ]),
   SignUpController
 );
+
+
+Router.put("/updateSelfId/:id",uploadTo().fields([
+  { name: "img", maxCount: 1 },
+    { name: "resumeFile", maxCount: 1 },
+]),updateSelfProfile
+
+)
 
 Router.post("/proposals", upload.array("attachments"), createAndSendProposal );
 Router.put('/UpdateProposal/:id', upload.array("attachments"),updateProposal)
@@ -73,6 +86,8 @@ Router.put(
   updateUser
 )
 
+
+Router.get("/getEmplyeeById/:id",getEmployeeById)
 //Reports
 Router.get('/reports/summary',getReportsSummary)
 
@@ -163,7 +178,10 @@ Router.get("/getLeadData", Get_Lead);
 Router.get("/getClientData", Get_Client);
 
 Router.put("/updateVacancy/:jobId", updateVacancy);
+
 Router.get("/getEmpDataByID/:employeeId", getEmpdatabyID);
+
+
 Router.put("/moveleadtoClient/:leadId", ConvertToClient);
 Router.delete("/DeleteLead/:leadId", deleteLead);
 Router.put("/updateClientLead/:leadId", updateClientUser);
@@ -175,8 +193,23 @@ Router.post("/add_attendance", add_attendance);
 Router.get("/get_attendance", getAttendance);
 
 
+Router.post('/addLeave', addLeave)
+
+Router.get('/getLeave', getLeaves)
+Router.get('/getAllLeaves/:employeeId', getAllLeaves)
+Router.get('/getMonthlyAcceptedLeaves/:employeeId',getMonthlyAcceptedLeaves)
+Router.get('/getTotalProjects/:employeeId', getTotalProjects)
+
+
+Router.get('/getSalaryStats/:employeeId/:month/:year',getSalaryStats)
+Router.get('/getSalaryDetails/:employeeId',getSalaryDetails)
+
+
 Router.post("/userLogin", UserLogin);
-Router.post("/addLeave", add_leave);
-Router.get("/getLeave", get_leaves);
+Router.get('/getTasksByEmployee/:employeeId', getTasksByEmployee)
+
+Router.get('/employeeStats/:employeeId',getEmployeeStats)
+
+
 
 module.exports = Router;
