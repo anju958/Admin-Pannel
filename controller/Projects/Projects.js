@@ -2,6 +2,56 @@
 const Project = require('../../model/Project/Projects');
 const SignUp = require('../../model/SignUp/SignUp'); 
 const mongoose = require("mongoose");
+const ClientLead = require('../../model/ClientLead/ClientLead')
+
+// CREATE PROJECT
+// const createProject = async (req, res) => {
+//   try {
+//     console.log("req.file:", req.file); // uploaded file info
+//     console.log("req.body:", req.body); // form data
+
+//     const {
+//       projectName,
+//       department,
+//       service,
+//       price,
+//       startDate,
+//       endDate,
+//       projectCategory,
+//       notes,
+//       addMember,
+//       projectDescription,
+//       clientId
+//     } = req.body;
+
+//     // Create new project
+//     const newProject = new Project({
+//       projectName,
+//       department,
+//       service,
+//       price,
+//       startDate,
+//       endDate,
+//       projectCategory,
+//       notes,
+//       addMember: addMember ? JSON.parse(addMember) : [], // parse JSON array if sent
+//       projectDescription,
+//       clientId,
+//       addFile: req.file ? req.file.filename : null // save file name
+//     });
+
+//     await newProject.save();
+
+//     res.status(200).json({
+//       message: "Project Added Successfully",
+//       project: newProject
+//     });
+//   } catch (error) {
+//     console.error("Error in createProject:", error.message);
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
 
 // CREATE PROJECT
 const createProject = async (req, res) => {
@@ -23,7 +73,7 @@ const createProject = async (req, res) => {
       clientId
     } = req.body;
 
-    // Create new project
+    // ✅ 1. Create new project
     const newProject = new Project({
       projectName,
       department,
@@ -33,16 +83,28 @@ const createProject = async (req, res) => {
       endDate,
       projectCategory,
       notes,
-      addMember: addMember ? JSON.parse(addMember) : [], // parse JSON array if sent
+      addMember: addMember ? JSON.parse(addMember) : [],
       projectDescription,
       clientId,
-      addFile: req.file ? req.file.filename : null // save file name
+      addFile: req.file ? req.file.filename : null
     });
 
+    // ✅ 2. Save project in DB
     await newProject.save();
 
+    // ✅ 3. Link this project to the client
+    if (clientId) {
+      await ClientLead.findByIdAndUpdate(
+        clientId,
+        { $push: { projects: newProject._id } },
+        { new: true }
+      );
+      console.log("Project linked to client:", clientId);
+    }
+
+    // ✅ 4. Send response
     res.status(200).json({
-      message: "Project Added Successfully",
+      message: "Project Added & Linked Successfully",
       project: newProject
     });
   } catch (error) {
@@ -50,6 +112,7 @@ const createProject = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 // GET ALL PROJECTS
 const getProject = async (req, res) => {

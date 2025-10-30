@@ -41,6 +41,7 @@ const { getSalaryStats, getSalaryDetails } = require("../controller/User/Salary/
 const { getTasksByEmployee } = require("../controller/User/TaskAssign/TaskAssign");
 const { getEmployeeStats } = require("../model/userPannel/HomePage/HomePage");
 const { updateSelfProfile, getEmployeeById } = require("../controller/SignUp/UpdateEmplyeeSelf");
+const { registerUser, loginUser, getAllUsers } = require("../controller/authController/authController");
 
 
 
@@ -104,6 +105,12 @@ Router.patch('/approvalproposal/:id' , approveProposal)
 Router.post("/createInvoice", createInvoice);
 
 Router.get('/AdminSummary/',getAdminSummary)
+
+
+//auth Routes
+Router.post('/register',registerUser)
+Router.post('/login',loginUser)
+Router.get('/users',getAllUsers)
 
 // ---------- NORMAL ROUTES ----------
 

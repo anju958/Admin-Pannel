@@ -1,20 +1,46 @@
 const ClientLead = require('../../model/ClientLead/ClientLead')
 
+// const Get_Client = async (req, res) => {
+//     try {
+//         const getData = await ClientLead.find({ userType: "client" })
+//             .populate("department", "deptName")
+//             .populate("service", "serviceName")
+//             .populate("assign", "ename")
+//             .sort({ createdAt: -1 })
+//         res.status(200).json(getData)
+
+
+//     } catch (error) {
+//         res.status(500).json({ message: "Error Fetching user", error: error, })
+
+//     }
+// }
 const Get_Client = async (req, res) => {
     try {
         const getData = await ClientLead.find({ userType: "client" })
             .populate("department", "deptName")
             .populate("service", "serviceName")
             .populate("assign", "ename")
-            .sort({ createdAt: -1 })
-        res.status(200).json(getData)
+            // 🔹 Populate all projects linked to this client
+            .populate({
+                path: "projects",
+                populate: [
+                    { path: "department", select: "deptName" },
+                    { path: "service", select: "serviceName" }
+                ]
+            })
+            .sort({ createdAt: -1 });
 
+        res.status(200).json(getData);
 
     } catch (error) {
-        res.status(500).json({ message: "Error Fetching user", error: error, })
-
+        res.status(500).json({ message: "Error Fetching user", error: error.message });
     }
-}
+};
+
+
+
+
 const Get_Lead = async (req, res) => {
     try {
         const getData = await ClientLead.find({ userType: "lead" })

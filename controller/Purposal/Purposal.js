@@ -37,7 +37,7 @@ async function sendProposalEmail({ clientEmail, clientName, title, description, 
         <ul>
           ${services.map((s) => `<li>${s.name} - ₹${s.price}</li>`).join("")}
         </ul>
-        <p><strong>Total Price:</strong> ₹${services.reduce((acc, s) => acc + (s.price || 0), 0)}</p>
+       <p><strong>Total Price:</strong> ₹${services.reduce((acc, s) => acc + Number(s.price || 0), 0)}</p>
         <p><strong>Terms:</strong> ${terms}</p>
       </div>
     `,

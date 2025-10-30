@@ -61,13 +61,14 @@ const ClientLeadSchema = new mongoose.Schema({
     required: true
   },
 
-  leadId: { type: String, unique: true }
+  leadId: { type: String, unique: true },
+  projects: [{ type: mongoose.Schema.Types.ObjectId, ref: "projects" }]
 }, { timestamps: true });
 
 ClientLeadSchema.pre('save', async function (next) {
   if (!this.isNew || this.leadId) return next();
   try {
-    const counter = await Counter.findOneAndUpdate(
+    const counter = await Counter.findOneAndUpdate( 
       { _id: 'leadId' },
       { $inc: { seq: 1 } },
       { new: true, upsert: true }

@@ -3,29 +3,71 @@
   const Project = require('../../model/Project/Projects')
 
 
-  const addService = async (req, res) => {
-    try {
-      const { serviceName, servicePrice , deptId } = req.body;
+  // const addService = async (req, res) => {
+  //   try {
+  //     const { serviceName, servicePrice , deptId } = req.body;
 
-      if (!serviceName || !deptId || !servicePrice) {
-        return res.status(400).json({ message: "Service name and department ID are required" });
-      }
+  //     if (!serviceName || !deptId || !servicePrice) {
+  //       return res.status(400).json({ message: "Service name and department ID are required" });
+  //     }
 
     
-      const department = await Department.findById(deptId);
-      if (!department) {
-        return res.status(404).json({ message: "Department not found" });
-      }
+  //     const department = await Department.findById(deptId);
+  //     if (!department) {
+  //       return res.status(404).json({ message: "Department not found" });
+  //     }
 
   
-      const newService = new Service({ serviceName, deptId  ,servicePrice});
-      const savedService = await newService.save();
+  //     const newService = new Service({ serviceName, deptId  ,servicePrice});
+  //     const savedService = await newService.save();
 
-      res.status(201).json(savedService);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
+  //     res.status(201).json(savedService);
+  //   } catch (error) {
+  //     res.status(500).json({ message: error.message });
+  //   }
+  // };
+
+  const addService = async (req, res) => {
+  try {
+    const { serviceName, servicePrice, deptId } = req.body;
+
+    if (!serviceName || !deptId || !servicePrice) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
     }
-  };
+
+    // Check department
+    const department = await Department.findById(deptId);
+    if (!department) {
+      return res.status(404).json({ success: false, message: "Department not found" });
+    }
+
+    // Duplicate check (case insensitive)
+    const existingService = await Service.findOne({
+      serviceName: { $regex: new RegExp(`^${serviceName}$`, "i") },
+      deptId: deptId,
+    });
+
+    if (existingService) {
+      return res.status(400).json({
+        success: false,
+        message: `Service "${serviceName}" already exists under department "${department.deptName}".`,
+      });
+    }
+
+    // Save new service
+    const newService = new Service({ serviceName, servicePrice, deptId });
+    const savedService = await newService.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Service added successfully",
+      data: savedService,
+    });
+  } catch (error) {
+    console.error("Error adding service:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+};
 
 
   const getServicesByDept = async (req, res) => {
