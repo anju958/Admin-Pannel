@@ -33,7 +33,7 @@ const { updateCompany, createCompany, getCompany } = require("../controller/Comp
 // const { createInvoice, markInvoicePaid } = require("../controller/Payment/PaymentController");
 
 
-const {getAllInvoices, getInvoiceById, deleteInvoice ,createInvoice , markInvoicePaid} = require('../controller/Invoice/Invoice');
+const {getAllInvoices, getInvoiceById, deleteInvoice ,createInvoice , markInvoicePaid, getInvoicesByClient} = require('../controller/Invoice/Invoice');
 const { getReportsSummary } = require("../controller/Reports/Reports");
 const { getAdminSummary } = require("../controller/Summary/Summary");
 const { getAllLeaves, getMonthlyAcceptedLeaves, getTotalProjects, addLeave } = require("../controller/UserPannel/Leaves/Leaves");
@@ -96,6 +96,7 @@ Router.get('/reports/summary',getReportsSummary)
 Router.get('/getAllInvoices', getAllInvoices );
 Router.get('/getInvoiceById/:id',getInvoiceById);
 Router.put('/markpaid/:id',markInvoicePaid);
+Router.get('/getInvoicesByClient/:clientId',getInvoicesByClient)
 Router.delete('/deleteInvoice/:id', deleteInvoice)
 
 

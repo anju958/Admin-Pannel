@@ -5,55 +5,6 @@ const mongoose = require("mongoose");
 const ClientLead = require('../../model/ClientLead/ClientLead')
 
 // CREATE PROJECT
-// const createProject = async (req, res) => {
-//   try {
-//     console.log("req.file:", req.file); // uploaded file info
-//     console.log("req.body:", req.body); // form data
-
-//     const {
-//       projectName,
-//       department,
-//       service,
-//       price,
-//       startDate,
-//       endDate,
-//       projectCategory,
-//       notes,
-//       addMember,
-//       projectDescription,
-//       clientId
-//     } = req.body;
-
-//     // Create new project
-//     const newProject = new Project({
-//       projectName,
-//       department,
-//       service,
-//       price,
-//       startDate,
-//       endDate,
-//       projectCategory,
-//       notes,
-//       addMember: addMember ? JSON.parse(addMember) : [], // parse JSON array if sent
-//       projectDescription,
-//       clientId,
-//       addFile: req.file ? req.file.filename : null // save file name
-//     });
-
-//     await newProject.save();
-
-//     res.status(200).json({
-//       message: "Project Added Successfully",
-//       project: newProject
-//     });
-//   } catch (error) {
-//     console.error("Error in createProject:", error.message);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-
-// CREATE PROJECT
 const createProject = async (req, res) => {
   try {
     console.log("req.file:", req.file); // uploaded file info
@@ -131,34 +82,119 @@ const getProject = async (req, res) => {
 };
 
 
+// const getProjectsByClient = async (req, res) => {
+//   try {
+//     const clientId = req.params.clientId;
+//       console.log("Client ID from params:", clientId);
+//     const isValidObjectId = mongoose.Types.ObjectId.isValid(clientId);
+
+
+//      const query = isValidObjectId
+//       ? { clientId: clientId }                         // Case: stored as ObjectId
+//       : { "clientId.leadId": clientId };              // Case: stored as leadId/string
+
+//     console.log("Query being used:", query); 
+
+
+
+//     const clientProjects = await Project.find(query)
+//       .populate("clientId", "leadName")
+//       .populate("department", "deptName")
+//       .populate("service", "serviceName")
+//       .populate("addMember", "ename") // populate employee names here
+//        .sort({ createdAt: -1 });
+//     res.status(200).json(clientProjects);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+
+
+
+
+
+// const getProjectsByClient = async (req, res) => {
+//   try {
+//     const clientId = req.params.clientId;
+//     const isValidObjectId = mongoose.Types.ObjectId.isValid(clientId);
+
+//     const query = isValidObjectId
+//       ? { clientId: clientId }
+//       : { "clientId.leadId": clientId };
+
+//     // 🟣 Get all projects for this client
+//     const clientProjects = await Project.find(query)
+//       .populate("clientId", "leadName emailId")
+//       .populate("department", "deptName")
+//       .populate("service", "serviceName")
+//       .populate("addMember", "ename")
+//       .sort({ createdAt: -1 });
+
+//     // 🟢 Also fetch the initial project from ClientLeads
+//     const clientLead = await ClientLeads.findById(clientId).populate(
+//       "service",
+//       "serviceName"
+//     );
+
+//     const initialProject = clientLead
+//       ? {
+//           _id: clientLead._id,
+//           projectName: clientLead.project_type || "Unnamed Project",
+//           project_price: clientLead.project_price || 0,
+//           service: clientLead.service || { serviceName: "N/A" },
+//           addMember: clientLead.addMember || [],
+//           isInitial: true,
+//         }
+//       : null;
+
+//     // 🧩 Merge both into one list
+//     const allProjects = initialProject
+//       ? [initialProject, ...clientProjects]
+//       : clientProjects;
+
+//     res.status(200).json(allProjects);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
 const getProjectsByClient = async (req, res) => {
   try {
     const clientId = req.params.clientId;
-      console.log("Client ID from params:", clientId);
+    console.log("🔹 Client ID from params:", clientId);
+
+    // Detect if it's a valid ObjectId
     const isValidObjectId = mongoose.Types.ObjectId.isValid(clientId);
 
+    // Try both matching types
+    const query = isValidObjectId
+      ? { clientId: clientId } // Matches ObjectId type
+      : {
+          $or: [
+            { "clientId.leadId": clientId },
+            { leadId: clientId },
+          ],
+        };
 
-     const query = isValidObjectId
-      ? { clientId: clientId }                         // Case: stored as ObjectId
-      : { "clientId.leadId": clientId };              // Case: stored as leadId/string
-
-    console.log("Query being used:", query); 
-
-
+    console.log("🔹 Query used:", query);
 
     const clientProjects = await Project.find(query)
-      .populate("clientId", "leadName")
+      .populate("clientId", "leadName emailId")
       .populate("department", "deptName")
       .populate("service", "serviceName")
-      .populate("addMember", "ename") // populate employee names here
-       .sort({ createdAt: -1 });
+      .populate("addMember", "ename")
+      .sort({ createdAt: -1 });
+
+    console.log("✅ Found Projects:", clientProjects.length);
+
     res.status(200).json(clientProjects);
   } catch (error) {
+    console.error("❌ Error fetching projects:", error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// GET PROJECT BY ID
 const getProjectById = async (req, res) => {
   try {
     const { projectId } = req.params;
