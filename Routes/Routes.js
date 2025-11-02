@@ -33,7 +33,7 @@ const { updateCompany, createCompany, getCompany } = require("../controller/Comp
 // const { createInvoice, markInvoicePaid } = require("../controller/Payment/PaymentController");
 
 
-const {getAllInvoices, getInvoiceById, deleteInvoice ,createInvoice , markInvoicePaid, getInvoicesByClient} = require('../controller/Invoice/Invoice');
+const {getAllInvoices, getInvoiceById, deleteInvoice ,createInvoice , markInvoicePaid, getInvoicesByClient, addPayment} = require('../controller/Invoice/Invoice');
 const { getReportsSummary } = require("../controller/Reports/Reports");
 const { getAdminSummary } = require("../controller/Summary/Summary");
 const { getAllLeaves, getMonthlyAcceptedLeaves, getTotalProjects, addLeave } = require("../controller/UserPannel/Leaves/Leaves");
@@ -98,7 +98,7 @@ Router.get('/getInvoiceById/:id',getInvoiceById);
 Router.put('/markpaid/:id',markInvoicePaid);
 Router.get('/getInvoicesByClient/:clientId',getInvoicesByClient)
 Router.delete('/deleteInvoice/:id', deleteInvoice)
-
+Router.post('/invoices/:id/addPayment',addPayment)
 
 Router.patch('/approvalproposal/:id' , approveProposal)
 
@@ -140,7 +140,7 @@ Router.get("/getProjects", getProject);
 Router.put('/updateProject/:id',updateProject)
 Router.get("/getProjectById/:clientId/:projectId", getProjectById);
 Router.delete('/deleteProjectById/:id' , deleteProject)
-Router.post("/createInvoice/:clientId", createInvoice);
+// Router.post("/createInvoice/:clientId", createInvoice);
 Router.get("/getProjectbyClient/:clientId", getProjectsByClient);
 Router.get('/getprojectByPorjectId/:projectId',getProjectByProjectId)
 Router.get("/getjobvacancy", job_data);

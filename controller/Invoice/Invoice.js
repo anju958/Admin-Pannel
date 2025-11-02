@@ -1,21 +1,43 @@
 const Invoice = require("../../model/Invoice/Invoice");
 const nodemailer = require("nodemailer");
+const companyDetail = require('../../model/CompanyDetails/CompanyDetails')
 
+// function getProjectDisplayName(project) {
+//   if (!project || typeof project !== "object") return "Unnamed Project";
+//   return (
+//     project.projectName ||
+//     project.project_name ||
+//     project.title ||
+//     project.name ||
+//     project.serviceName ||
+//     project.project_type ||
+//     project.projectCategory?.join(", ") ||
+//     project.service?.serviceName ||
+//     "Unnamed Project"
+//   );
+// }
 function getProjectDisplayName(project) {
   if (!project || typeof project !== "object") return "Unnamed Project";
-
   return (
     project.projectName ||
+    project.name ||
+    project.project_title ||
     project.project_name ||
     project.title ||
-    project.name ||
-    project.serviceName ||
+    project.projectType ||
     project.project_type ||
-    project.projectCategory?.join(", ") ||
-    project.service?.serviceName ||
+    project.serviceName ||
+    project.project ||
+    (project.service && (project.service.serviceName || project.service.name)) || // <-- this line important!
+    (typeof project.service === "string" && project.service) ||
+    (Array.isArray(project.projectCategory) && project.projectCategory.length
+      ? project.projectCategory.join(", ")
+      : undefined) ||
+    String(project) ||
     "Unnamed Project"
   );
 }
+
 
 const createInvoice = async (req, res) => {
   try {
@@ -31,10 +53,42 @@ const createInvoice = async (req, res) => {
       return res.status(400).json({ error: "Projects required" });
     }
 
-    const normalizedProjects = projects.map((p) => ({
-      ...p,
-      projectName: getProjectDisplayName(p),
-    }));
+    // const normalizedProjects = projects.map((p) => ({
+    //   ...p,
+    //   projectName: getProjectDisplayName(p),
+    // }));
+    console.log("RAW PROJECTS PAYLOAD:", projects);
+
+    // const normalizedProjects = projects.map((p) => {
+    //   let name = p.projectName || p.name || p.title || p.project_title || p.project_name || p.project || (p.service && p.service.serviceName);
+    //   if (!name) name = getProjectDisplayName(p);
+    //   return {
+    //     ...p,
+    //     projectName: name || "Unnamed Project"
+    //   }
+    // });
+
+
+    const normalizedProjects = projects.map((p) => {
+  let name =
+    p.projectName ||
+    p.name ||
+    p.title ||
+    p.project_title ||
+    p.project_name ||
+    p.project ||
+    (p.service && (p.service.serviceName || p.service.name)) || // <- covers some nested
+    (typeof p.service === "string" && p.service) ||
+    (Array.isArray(p.projectCategory) && p.projectCategory.length
+      ? p.projectCategory.join(", ")
+      : undefined);
+
+  if (!name) name = getProjectDisplayName(p);
+  return {
+    ...p,
+    projectName: name || "Unnamed Project"
+  };
+});
 
     const totalAmount = normalizedProjects.reduce(
       (sum, p) => sum + Number(p.amount || 0),
@@ -74,48 +128,61 @@ const createInvoice = async (req, res) => {
       },
     });
 
+
+
+    const company = await companyDetail.findOne(); // fetch once before this block
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: company?.email?.trim() || process.env.EMAIL_USER,
       to: clientEmail,
       subject: `Invoice #${invoice.invoiceNumber} (₹${totalAmount})`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border-radius: 12px; border: 1px solid #eee; padding: 32px;">
-          <h2 style="margin-bottom: 12px; color: #1976d2;">Premier WebTech</h2>
-          <p>Dear <b>${clientName}</b>,</p>
-          <p>Please pay your invoice <b style="color:#222;">#${invoice.invoiceNumber}</b> using the bank details below:</p>
-          <table style="border-collapse: collapse; width: 100%; margin: 24px 0;">
-            <thead>
-              <tr>
-                <th style="border: 1px solid #ccc; padding: 10px; text-align: left; background: #fafafa;">Service/Project</th>
-                <th style="border: 1px solid #ccc; padding: 10px; text-align: right; background: #fafafa;">Price (₹)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${normalizedProjects
-                .map(
-                  (p) => `
-                <tr>
-                  <td style="border: 1px solid #ccc; padding: 10px;">${p.projectName}</td>
-                  <td style="border: 1px solid #ccc; padding: 10px; text-align: right;">${Number(
-                    p.amount || 0
-                  ).toLocaleString()}</td>
-                </tr>`
-                )
-                .join("")}
-              <tr>
-                <td style="border: 1px solid #ccc; padding: 10px; font-weight:bold;">Total</td>
-                <td style="border: 1px solid #ccc; padding: 10px; text-align: right; font-weight: bold;">₹${totalAmount.toLocaleString()}</td>
-              </tr>
-            </tbody>
-          </table>
-          <p><strong>Sent From:</strong> ${process.env.EMAIL_USER}</p>
-          <p style="color: #e53935; font-weight: bold;">Invoice due date: ${new Date(
-            dueDate
-          ).toLocaleDateString("en-GB")}</p>
-        </div>
-      `,
-    });
+    <div style="font-family: Arial, sans-serif; max-width: 660px; margin: auto; border-radius: 12px; border: 1px solid #eee; padding: 32px;">
 
+      <h2 style="margin-bottom: 12px; color: #1976d2;">Invoice from Premier WebTech</h2>
+
+      <p>Dear <b>${clientName}</b>,</p>
+      <p>Please pay your invoice <b style="color:#222;">#${invoice.invoiceNumber}</b>:</p>
+
+      <table style="border-collapse: collapse; width: 100%; margin: 24px 0;">
+        <thead>
+          <tr>
+            <th style="border: 1px solid #ccc; padding: 10px; text-align: left; background: #fafafa;">Service/Project</th>
+            <th style="border: 1px solid #ccc; padding: 10px; text-align: right; background: #fafafa;">Price (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${normalizedProjects.map(p => `
+          <tr>
+            <td style="border: 1px solid #ccc; padding: 10px;">${p.projectName}</td>
+            <td style="border: 1px solid #ccc; padding: 10px; text-align: right;">${Number(p.amount || 0).toLocaleString()}</td>
+          </tr>`).join("")}
+          <tr>
+            <td style="border: 1px solid #ccc; padding: 10px; font-weight: bold;">Total</td>
+            <td style="border: 1px solid #ccc; padding: 10px; text-align: right; font-weight: bold;">₹${totalAmount.toLocaleString()}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin:16px 0;">
+        <b>Bank Payment Details:</b>
+        <ul style="padding-left: 1em;">
+          <li>Bank: ${company?.bank?.bankName || ''}</li>
+          <li>Account Number: ${company?.bank?.accountNumber || ''}</li>
+          <li>IFSC: ${company?.bank?.ifsc || ''}</li>
+          ${company?.taxId ? `<li>GST: ${company.taxId}</li>` : ''}
+        </ul>
+      </div>
+
+      <hr style="margin: 20px 0;">
+
+      <div style="font-size: 14px; line-height: 1.4; color: #555;">
+        <p><b>Address:</b> ${company?.address?.street || ''}${company?.address?.city ? ', ' + company.address.city : ''}${company?.address?.state ? ', ' + company.address.state : ''}${company?.address?.country ? ', ' + company.address.country : ''}${company?.address?.zip ? ', ZIP: ' + company.address.zip : ''}</p>
+        <p><b>Email:</b> ${company?.email?.trim() || ''} <b>Phone:</b> ${company?.phone || ''}</p>
+        <p><b>Website:</b> <a href="${company?.website || '#'}">${company?.website || ''}</a></p>
+      </div>
+    </div>
+  `
+    });
     res.status(201).json({
       success: true,
       message: "Invoice created and sent.",
@@ -138,12 +205,13 @@ const getAllInvoices = async (req, res) => {
 };
 
 // GET single invoice
+
 const getInvoiceById = async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice)
       return res.status(404).json({ success: false, error: "Invoice not found" });
-    res.json({ success: true, invoice });
+    res.json({ success: true, invoice }); // payment history included
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -208,10 +276,51 @@ const getInvoicesByClient = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
+const addPayment = async (req, res) => {
+  try {
+    const { id } = req.params; // invoice id
+    const { amount, method, note } = req.body;
+
+    const invoice = await Invoice.findById(id);
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: "Invoice not found" });
+    }
+
+    // Log payment history entry
+    invoice.payments = invoice.payments || [];
+    invoice.payments.push({
+      amount: Number(amount),
+      method,
+      note,
+      date: new Date(),
+    });
+
+    // Update totals and status
+    invoice.paidAmount += Number(amount);
+    invoice.remainingAmount = Math.max(invoice.totalAmount - invoice.paidAmount, 0);
+
+    if (invoice.paidAmount >= invoice.totalAmount) {
+      invoice.status = "Paid";
+      invoice.paidAt = new Date();
+    } else if (invoice.paidAmount > 0) {
+      invoice.status = "Partial";
+    } else {
+      invoice.status = "Pending";
+    }
+
+    await invoice.save();
+
+    res.json({
+      success: true,
+      message: "Payment added successfully",
+      invoice, // includes payment history
+    });
+  } catch (err) {
+    console.error("Error adding payment:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 
 
 
-
-
-
-module.exports = { getAllInvoices, getInvoiceById, deleteInvoice, createInvoice, markInvoicePaid , getInvoicesByClient };
+module.exports = { addPayment, getAllInvoices, getInvoiceById, deleteInvoice, createInvoice, markInvoicePaid, getInvoicesByClient };
