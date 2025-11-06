@@ -18,7 +18,7 @@ const { getEmpdatabyID, getEmployeesByDepartment } = require("../controller/Empl
 const { ConvertToClient, updateStatus } = require("../controller/ClientLead/ConverttoClient");
 const { updateClientUser, deleteClientUser } = require("../controller/ClientLead/UpdateClientLead");
 const { add_attendance, getAttendance } = require("../controller/Attendance/Attendance");
-const { UserLogin } = require("../controller/UserLogin/UserLogin");
+const { UserLogin, UserLogout, getWorkingHours } = require("../controller/UserLogin/UserLogin");
 const { add_leave, get_leaves, getLeaves } = require("../controller/User/Leave/Leave");
 const { addService, getAllServices, getServicesByDept, deleteService, updateService, getServicebyId, getServiceByProject } = require("../controller/Service/Service");
 const { createProject, getProject, getProjectById, getProjectsByClient, getProjectByProjectId, updateProject, deleteProject, getServicebyProjectId, getAssignEmpByService, getEmployeesByProjectId, getProjectDetailById } = require("../controller/Projects/Projects");
@@ -41,7 +41,14 @@ const { getSalaryStats, getSalaryDetails } = require("../controller/User/Salary/
 const { getTasksByEmployee } = require("../controller/User/TaskAssign/TaskAssign");
 const { getEmployeeStats } = require("../model/userPannel/HomePage/HomePage");
 const { updateSelfProfile, getEmployeeById } = require("../controller/SignUp/UpdateEmplyeeSelf");
-const { registerUser, loginUser, getAllUsers } = require("../controller/authController/authController");
+// const { registerUser, loginUser, getAllUsers } = require("../controller/authController/authController");
+// const { createUser } = require("../controller/userController/userController");
+const { requireSuperAdmin } = require("../controller/middleware/auth");
+const jwt = require('jsonwebtoken');
+const User = require('../model/Users/Users');
+const { createUser, updatePermission, getAllAdminUsers, getAdminUserById, deleteAdminUserById, resetPassword ,  } = require("../controller/userController/userController");
+const normalizeInput = require("../controller/middleware/normalizeInput");
+const { getModules } = require("../controller/Module/modules");
 
 
 
@@ -109,16 +116,51 @@ Router.get('/AdminSummary/',getAdminSummary)
 
 
 //auth Routes
-Router.post('/register',registerUser)
-Router.post('/login',loginUser)
-Router.get('/users',getAllUsers)
+// Router.post('/register',registerUser)
+// Router.post('/login',loginUser)
+// Router.get('/users',getAllUsers)
 
 // ---------- NORMAL ROUTES ----------
 
-Router.use('/roles',router)
+// Router.use('/roles',router)
 
 Router.get("/getEmployeeByService/:serviceId", getEmployeesByService);
-Router.post("/adminLogin", LoginAdmin);
+Router.post("/adminLogin", normalizeInput ,LoginAdmin);
+Router.get('/users/me', async (req, res) => {
+  try {
+    const auth = req.headers.authorization;
+    if (!auth || !auth.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+    const token = auth.split(" ")[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).lean();
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ user });
+  } catch (err) {
+    res.status(401).json({ message: "Unauthorized" });
+  }
+});
+
+//create user by admin routes
+Router.post('/users/create', normalizeInput,createUser)
+Router.put('/users/update/:id', updatePermission)
+Router.get('/getAllAdminUser', getAllAdminUsers)
+Router.get('/getAdminbyUsers/:id', getAdminUserById)
+Router.delete('/deleteAdminByUser/:id' , deleteAdminUserById)
+Router.put('/users/:id',resetPassword)
+
+//permission
+Router.get('/getModule',getModules)
+
+
+//login  and logout employee page
+Router.post('/employee/login',UserLogin)
+Router.post('/employee/logout' , UserLogout)
+Router.get('/employee/working-hours',getWorkingHours)
+
 Router.get("/getemployeeData", getEmployeeData);
 Router.post("/addDepartment", addDepartment);
 Router.get("/getDepartment", getDepartments);
@@ -176,10 +218,13 @@ Router.get('/leadById/:id',getLeadById)
 
 Router.put('/updateStatus/:id',updateStatus)
 
+//permission
+// Router.post('/user/create', requireSuperAdmin, createUser)
+
 //company details 
-Router.post('/companyDetails', createCompany)
-Router.get('/getCompnayDetails' , getCompany)
-Router.put('/updateCompnay/:id',updateCompany)
+// Router.post('/companyDetails', createCompany)
+// Router.get('/getCompnayDetails' , getCompany)
+// Router.put('/updateCompnay/:id',updateCompany)
 
 Router.put('/UpdateTask/:id',updateTask)
 Router.get("/getLeadData", Get_Lead);
@@ -213,7 +258,7 @@ Router.get('/getSalaryStats/:employeeId/:month/:year',getSalaryStats)
 Router.get('/getSalaryDetails/:employeeId',getSalaryDetails)
 
 
-Router.post("/userLogin", UserLogin);
+// Router.post("/userLogin", UserLogin);
 Router.get('/getTasksByEmployee/:employeeId', getTasksByEmployee)
 
 Router.get('/employeeStats/:employeeId',getEmployeeStats)
