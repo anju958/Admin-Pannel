@@ -1,5 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require("jsonwebtoken");
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const SignUp = require('../../model/SignUp/SignUp');
 const Attendance = require('../../model/Attendance/Attendance'); // Your attendance schema
 
@@ -25,7 +27,10 @@ const UserLogin = async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: employee._id, role: employee.userType },
+      {
+        id: employee._id,
+        role: employee.userType
+      },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
@@ -156,5 +161,70 @@ const getWorkingHours = async (req, res) => {
     res.status(500).json({ message: "Error fetching working hours", error: error.message });
   }
 };
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // or your email provider
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,  // Your email password or app password
+  }
+});
 
-module.exports = { UserLogin, UserLogout, getWorkingHours };
+const forgotPassword = async (req, res) => {
+  try {
+    const { official_email } = req.body;
+    const user = await SignUp.findOne({ official_email });
+    if (!user) {
+      return res.status(404).json({ message: "No user with that email found" });
+    }
+
+    // Create token
+    const token = crypto.randomBytes(20).toString("hex");
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour expiry
+    await user.save();
+
+    // Construct reset URL
+    const resetURL = `https://yourdomain.com/reset-password/${token}`; // Change to your frontend reset password URL
+
+    // Email options
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: user.official_email,
+      subject: "Password Reset Request",
+      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\n
+Please click on the following link, or paste it into your browser to complete the process:\n\n
+${resetURL}\n\n
+If you did not request this, please ignore this email and your password will remain unchanged.\n`
+    };
+
+    // Send email
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({
+      message: "Password reset email sent"
+    });
+
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ message: "Error sending password reset email", error: error.message });
+  }
+};
+const resetUserPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
+  const user = await SignUp.findOne({
+    resetPasswordToken: token,
+    resetPasswordExpires: { $gt: Date.now() }
+  });
+  if (!user) {
+    return res.status(400).json({ message: "Invalid or expired token" });
+  }
+
+  user.password = await bcrypt.hash(newPassword, 10);
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+
+  res.status(200).json({ message: "Password has been reset" });
+};
+
+module.exports = { UserLogin, UserLogout, getWorkingHours, resetUserPassword, forgotPassword };

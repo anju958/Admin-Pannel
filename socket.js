@@ -1,114 +1,97 @@
-
-// const { Server } = require("socket.io");
-
-// let ioInstance = null;
-
-// function initSocket(server) {
-//   if (ioInstance) return ioInstance;
-
-//   ioInstance = new Server(server, {
-//     cors: { origin: "*", methods: ["GET","POST"] } // allow frontend
-//   });
-
-//   ioInstance.on("connection", (socket) => {
-//     console.log("✅ Socket connected:", socket.id);
-
-//     // Join a room for a user (frontend emits 'join' with userId)
-//     socket.on("join", (userId) => {
-//       socket.join(userId);
-//       console.log(`User ${userId} joined room ${userId}`);
-//     });
-
-//     socket.on("disconnect", () => {
-//       console.log("❌ Socket disconnected:", socket.id);
-//     });
-//   });
-
-//   return ioInstance;
-// }
-
-// function getIO() {
-//   if (!ioInstance) throw new Error("Socket.io not initialized. Call initSocket(server) first.");
-//   return ioInstance;
-// }
-
-// module.exports = { initSocket, getIO };const { Server } = require("socket.io");
-
+// backend/socket.js
 const { Server } = require("socket.io");
-let ioInstance = null;
+const Chat = require("./model/Chat/Chat");
+const jwt = require("jsonwebtoken");
+const Users = require("./model/Users/Users");
+const SignUp = require("./model/SignUp/SignUp");
+const ClientLead = require("./model/ClientLead/ClientLead");
 
-// Utility to save chat messages
-async function saveMessageToDB(messageData) {
-  const ChatModel = require("./models/Chat"); // Adjust path to your mongoose Chat model
-
-  const chatMessage = new ChatModel({
-    senderId: messageData.senderId,
-    receiverId: messageData.receiverId,
-    message: messageData.message,
-    timestamp: new Date(messageData.timestamp),
-  });
-
-  await chatMessage.save();
-}
+let io;
+const onlineUsers = new Map(); // userId -> socket.id
 
 function initSocket(server) {
-  if (ioInstance) return ioInstance;
-
-  ioInstance = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] }, // allow frontend
+  io = new Server(server, {
+    cors: { origin: "*", methods: ["GET", "POST"] },
   });
 
-  ioInstance.on("connection", (socket) => {
+  console.log("⚡ Socket.io initialized");
+
+  io.on("connection", (socket) => {
     console.log("✅ Socket connected:", socket.id);
 
-    // Join user-specific room
-    socket.on("join", (userId) => {
-      socket.join(userId);
-      console.log(`User ${userId} joined room ${userId}`);
-
-      // If user is super admin, join admin room for monitoring
-      if (userId === "superadmin") {
-        socket.join("adminRoom");
-        console.log("Super Admin joined adminRoom for monitoring");
-      }
-    });
-
-    /**
-     * Message format:
-     * {
-     *   senderId: 'employee1',
-     *   receiverId: 'admin' OR 'employee2' OR 'superadmin',
-     *   message: 'Hello',
-     *   timestamp: Date.now()
-     * }
-     */
-    socket.on("sendMessage", async (messageData) => {
+    // When client registers (after auth)
+    socket.on("register", async (token) => {
       try {
-        // Save chat message to DB
-        await saveMessageToDB(messageData);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = String(decoded._id);
 
-        // Emit message to receiver's room
-        ioInstance.to(messageData.receiverId).emit("receiveMessage", messageData);
+        socket.userId = userId;
+        onlineUsers.set(userId, socket.id);
 
-        // Always emit every message to adminRoom for monitoring
-        ioInstance.to("adminRoom").emit("receiveMessage", messageData);
+        console.log("🟢 User online:", userId);
+
+        // Broadcast presence
+        io.emit("presence:update", { userId, isOnline: true });
       } catch (err) {
-        console.error("Error saving or emitting chat message:", err);
+        console.error("Register failed:", err.message);
       }
     });
 
+    // Handle sending messages
+    socket.on("send_message", async ({ receiverId, message }) => {
+      if (!socket.userId || !receiverId || !message) return;
+
+      const senderId = socket.userId;
+      const timestamp = new Date();
+      const s = String(senderId);
+      const r = String(receiverId);
+      const roomKey = s < r ? `${s}|${r}` : `${r}|${s}`;
+
+      const newMsg = await Chat.create({
+        senderId,
+        receiverId,
+        message,
+        timestamp,
+        roomKey,
+        read: false,
+      });
+
+      // Send to receiver if online
+      const receiverSocketId = onlineUsers.get(receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("message:new", newMsg);
+      }
+
+      // Send back to sender too
+      socket.emit("message:new", newMsg);
+    });
+
+    // Typing indicators
+    socket.on("typing:start", (receiverId) => {
+      const receiverSocketId = onlineUsers.get(receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("typing:start", socket.userId);
+      }
+    });
+
+    socket.on("typing:stop", (receiverId) => {
+      const receiverSocketId = onlineUsers.get(receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("typing:stop", socket.userId);
+      }
+    });
+
+    // On disconnect
     socket.on("disconnect", () => {
-      console.log("❌ Socket disconnected:", socket.id);
+      if (socket.userId) {
+        onlineUsers.delete(socket.userId);
+        io.emit("presence:update", { userId: socket.userId, isOnline: false });
+        console.log("🔴 User offline:", socket.userId);
+      }
     });
   });
 
-  return ioInstance;
+  return io;
 }
 
-function getIO() {
-  if (!ioInstance)
-    throw new Error("Socket.io not initialized. Call initSocket(server) first.");
-  return ioInstance;
-}
-
-module.exports = { initSocket, getIO };
+module.exports = { initSocket, io };

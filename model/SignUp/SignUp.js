@@ -142,6 +142,15 @@ const SignUpSchema = new mongoose.Schema({
     traineeDuration: {
         type: String
     },
+    resetPasswordToken: {
+        type: String,
+        required: false,
+    },
+    resetPasswordExpires: {
+        type: Date,
+        required: false,
+    },
+
     fcmTokens: [{ type: String }],
     deviceTokens: [{ type: String }],
 

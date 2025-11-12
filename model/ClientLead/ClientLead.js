@@ -4,6 +4,10 @@ const Counter = require('../Counter/Counter');
 const ClientLeadSchema = new mongoose.Schema({
   leadName: { type: String, required: true },
   emailId: { type: String, required: true },
+  password: { type: String, select: false },      // Hash only, never return raw password
+  otp: String,                                   // Store OTP (hashed or plain for dev, hashed for prod)
+  otpExpires: Date,                              // When OTP expires
+  isEmailVerified: { type: Boolean, default: false },
   phoneNo: { type: String, required: true },
   sourse: { type: String },
 

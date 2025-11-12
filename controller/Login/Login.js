@@ -29,6 +29,7 @@
                 message: "Login successful",
                 token,
                 user: {
+                    _id: user._id,
                     name: user.name,
                     role: user.role,
                     email: user.email,

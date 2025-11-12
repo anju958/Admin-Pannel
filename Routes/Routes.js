@@ -11,14 +11,14 @@ const { job_data } = require("../Update_job_no/Update_job_no");
 const {  getTraineeData } = require("../controller/Employee/getTraniee");
 const { updateUser, deleteUser } = require("../controller/SignUp/SignUpDelandUpdate");
 const { UpdateType } = require("../controller/SignUp/UpdateUserType");
-const { Get_ClientLead, Gen_ClientLead, deleteLead, getLeadById } = require("../controller/ClientLead/ClientLeadData");
+const { Get_ClientLead, Gen_ClientLead, deleteLead, getLeadById, sendPasswordSetupOtp, createPassword, clientLogin } = require("../controller/ClientLead/ClientLeadData");
 const { Get_Lead, Get_Client, getClientLeadById } = require("../controller/ClientLead/getClient");
 const { updateVacancy } = require("../controller/Job_Opening/UpdateJob");
 const { getEmpdatabyID, getEmployeesByDepartment } = require("../controller/Employee/getEmpbyId");
 const { ConvertToClient, updateStatus } = require("../controller/ClientLead/ConverttoClient");
 const { updateClientUser, deleteClientUser } = require("../controller/ClientLead/UpdateClientLead");
 const { add_attendance, getAttendance } = require("../controller/Attendance/Attendance");
-const { UserLogin, UserLogout, getWorkingHours } = require("../controller/UserLogin/UserLogin");
+const { UserLogin, UserLogout, getWorkingHours, forgotPassword, resetUserPassword } = require("../controller/UserLogin/UserLogin");
 const { add_leave, get_leaves, getLeaves } = require("../controller/User/Leave/Leave");
 const { addService, getAllServices, getServicesByDept, deleteService, updateService, getServicebyId, getServiceByProject } = require("../controller/Service/Service");
 const { createProject, getProject, getProjectById, getProjectsByClient, getProjectByProjectId, updateProject, deleteProject, getServicebyProjectId, getAssignEmpByService, getEmployeesByProjectId, getProjectDetailById } = require("../controller/Projects/Projects");
@@ -234,12 +234,16 @@ Router.put("/updateVacancy/:jobId", updateVacancy);
 
 Router.get("/getEmpDataByID/:employeeId", getEmpdatabyID);
 
-
+//client routes
 Router.put("/moveleadtoClient/:leadId", ConvertToClient);
 Router.delete("/DeleteLead/:leadId", deleteLead);
 Router.put("/updateClientLead/:leadId", updateClientUser);
 Router.delete("/deleteClientLead/:leadId", deleteClientUser);
 Router.get("/getClientLeadbyId/:leadId", getClientLeadById);
+Router.post('/client/send-password-otp',sendPasswordSetupOtp);
+Router.post('/client/create-password',createPassword)
+Router.post('/clientLogin', clientLogin)
+
 
 
 Router.post("/add_attendance", add_attendance);
@@ -262,6 +266,10 @@ Router.get('/getSalaryDetails/:employeeId',getSalaryDetails)
 Router.get('/getTasksByEmployee/:employeeId', getTasksByEmployee)
 
 Router.get('/employeeStats/:employeeId',getEmployeeStats)
+
+//forget password 
+Router.post("/forget-password", forgotPassword)
+Router.post("/reset-password", resetUserPassword)
 
 
 
