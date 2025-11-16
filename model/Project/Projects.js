@@ -8,13 +8,19 @@ const ProjectSchema = new mongoose.Schema({
     price: { type: Number },
     startDate: { type: Date },
     endDate: { type: Date },
-    projectCategory: { type: [String], default: []  },
+    projectCategory: { type: [String], default: [] },
     clientId: { type: mongoose.Schema.Types.ObjectId, ref: "ClientLeads", required: true },
     notes: { type: String },
-   addMember: [{ type: mongoose.Schema.Types.ObjectId, ref: "SignUp" }],
-   addFile:{ type:String},
+    addMember: [{ type: mongoose.Schema.Types.ObjectId, ref: "SignUp" }],
+    addFile: { type: String },
     projectDescription: { type: String },
-    projectId: { type: String }
+    projectId: { type: String },
+    status: {
+        type: String,
+        enum: ["Pending", "In Progress", "Completed"],
+        default: "Pending"
+    },
+
 }, { timestamps: true });
 
 ProjectSchema.pre('save', async function (next) {

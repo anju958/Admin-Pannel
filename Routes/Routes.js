@@ -17,7 +17,7 @@ const { updateVacancy } = require("../controller/Job_Opening/UpdateJob");
 const { getEmpdatabyID, getEmployeesByDepartment } = require("../controller/Employee/getEmpbyId");
 const { ConvertToClient, updateStatus } = require("../controller/ClientLead/ConverttoClient");
 const { updateClientUser, deleteClientUser } = require("../controller/ClientLead/UpdateClientLead");
-const { add_attendance, getAttendance } = require("../controller/Attendance/Attendance");
+const {  getMonthlyAttendance, getTodayAttendance, logoutEmployee } = require("../controller/Attendance/Attendance");
 const { UserLogin, UserLogout, getWorkingHours, forgotPassword, resetUserPassword } = require("../controller/UserLogin/UserLogin");
 const { add_leave, get_leaves, getLeaves } = require("../controller/User/Leave/Leave");
 const { addService, getAllServices, getServicesByDept, deleteService, updateService, getServicebyId, getServiceByProject } = require("../controller/Service/Service");
@@ -36,7 +36,7 @@ const { updateCompany, createCompany, getCompany } = require("../controller/Comp
 const {getAllInvoices, getInvoiceById, deleteInvoice ,createInvoice , markInvoicePaid, getInvoicesByClient, addPayment} = require('../controller/Invoice/Invoice');
 const { getReportsSummary } = require("../controller/Reports/Reports");
 const { getAdminSummary } = require("../controller/Summary/Summary");
-const { getAllLeaves, getMonthlyAcceptedLeaves, getTotalProjects, addLeave } = require("../controller/UserPannel/Leaves/Leaves");
+const { getAllLeaves, getMonthlyAcceptedLeaves, addLeave } = require("../controller/UserPannel/Leaves/Leaves");
 const { getSalaryStats, getSalaryDetails } = require("../controller/User/Salary/Salary");
 const { getTasksByEmployee } = require("../controller/User/TaskAssign/TaskAssign");
 const { getEmployeeStats } = require("../model/userPannel/HomePage/HomePage");
@@ -246,16 +246,16 @@ Router.post('/clientLogin', clientLogin)
 
 
 
-Router.post("/add_attendance", add_attendance);
-Router.get("/get_attendance", getAttendance);
+// Router.post("/add_attendance", add_attendance);
+// Router.get("/get_attendance", getAttendance);
 
-
+//leaves routes 
 Router.post('/addLeave', addLeave)
 
 Router.get('/getLeave', getLeaves)
 Router.get('/getAllLeaves/:employeeId', getAllLeaves)
 Router.get('/getMonthlyAcceptedLeaves/:employeeId',getMonthlyAcceptedLeaves)
-Router.get('/getTotalProjects/:employeeId', getTotalProjects)
+// Router.get('/getTotalProjects/:employeeId', getTotalProjects)
 
 
 Router.get('/getSalaryStats/:employeeId/:month/:year',getSalaryStats)
@@ -270,6 +270,22 @@ Router.get('/employeeStats/:employeeId',getEmployeeStats)
 //forget password 
 Router.post("/forget-password", forgotPassword)
 Router.post("/reset-password", resetUserPassword)
+
+
+//attandance
+Router.get('/monthly' , getMonthlyAttendance)
+Router.get('/today',getTodayAttendance)
+Router.post('/logout' ,logoutEmployee)
+Router.post("/checkout", async (req, res) => {
+  try {
+    const { employeeId } = req.body;
+    await markAttendanceCheckOut(employeeId);
+    res.json({ message: "Checkout updated" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+
+  }
+});
 
 
 

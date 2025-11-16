@@ -65,60 +65,49 @@ const UserLogout = async (req, res) => {
   }
 };
 
+
+
 // HELPER: Mark check-in on login
 async function markAttendanceCheckIn(empId) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // Start of today
+  const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
 
-  try {
-    let attendance = await Attendance.findOne({
-      empId: empId,
-      date: today
+  // Check if attendance exists
+  let attendance = await Attendance.findOne({ empId, date: today });
+
+  if (!attendance) {
+    const checkInTime = new Date().toLocaleTimeString("en-IN", { hour12: false });
+
+    attendance = await Attendance.create({
+      empId,
+      date: today,
+      check_in: checkInTime,
+      status: "Present"
     });
 
-    if (!attendance) {
-      // Create new attendance record with check-in time
-      attendance = new Attendance({
-        empId: empId,
-        date: today,
-        check_in: new Date().toLocaleTimeString('en-IN', { hour12: false }),
-        status: 'Present'
-      });
-      await attendance.save();
-      console.log(`✅ Check-in marked for employee ${empId} at ${attendance.check_in}`);
-    } else if (!attendance.check_in) {
-      // If record exists but no check-in, add it
-      attendance.check_in = new Date().toLocaleTimeString('en-IN', { hour12: false });
-      attendance.status = 'Present';
-      await attendance.save();
-      console.log(`✅ Check-in updated for employee ${empId}`);
-    } else {
-      console.log(`ℹ️ Employee ${empId} already checked in today`);
-    }
-  } catch (err) {
-    console.error('Error marking check-in:', err);
+    return checkInTime; // Return the newly created check-in time
   }
+
+  // If attendance already exists → return stored check-in
+  return attendance.check_in;
 }
+
 
 // HELPER: Mark check-out on logout
 async function markAttendanceCheckOut(empId) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = new Date().toLocaleDateString("en-CA");
 
-  try {
-    const attendance = await Attendance.findOne({
-      empId: empId,
-      date: today
-    });
+  const attendance = await Attendance.findOne({ empId, date: today });
 
-    if (attendance && !attendance.check_out) {
-      attendance.check_out = new Date().toLocaleTimeString('en-IN', { hour12: false });
-      await attendance.save();
-      console.log(`✅ Check-out marked for employee ${empId} at ${attendance.check_out}`);
-    }
-  } catch (err) {
-    console.error('Error marking check-out:', err);
+  if (attendance && !attendance.check_out) {
+    const checkOutTime = new Date().toLocaleTimeString("en-IN", { hour12: false });
+
+    attendance.check_out = checkOutTime;
+    await attendance.save();
+
+    return checkOutTime;
   }
+
+  return attendance?.check_out; // Return existing checkout if any
 }
 
 // GET WORKING HOURS
