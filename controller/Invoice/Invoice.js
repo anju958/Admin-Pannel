@@ -2,20 +2,6 @@ const Invoice = require("../../model/Invoice/Invoice");
 const nodemailer = require("nodemailer");
 const companyDetail = require('../../model/CompanyDetails/CompanyDetails')
 
-// function getProjectDisplayName(project) {
-//   if (!project || typeof project !== "object") return "Unnamed Project";
-//   return (
-//     project.projectName ||
-//     project.project_name ||
-//     project.title ||
-//     project.name ||
-//     project.serviceName ||
-//     project.project_type ||
-//     project.projectCategory?.join(", ") ||
-//     project.service?.serviceName ||
-//     "Unnamed Project"
-//   );
-// }
 function getProjectDisplayName(project) {
   if (!project || typeof project !== "object") return "Unnamed Project";
   return (
@@ -53,22 +39,8 @@ const createInvoice = async (req, res) => {
       return res.status(400).json({ error: "Projects required" });
     }
 
-    // const normalizedProjects = projects.map((p) => ({
-    //   ...p,
-    //   projectName: getProjectDisplayName(p),
-    // }));
+   
     console.log("RAW PROJECTS PAYLOAD:", projects);
-
-    // const normalizedProjects = projects.map((p) => {
-    //   let name = p.projectName || p.name || p.title || p.project_title || p.project_name || p.project || (p.service && p.service.serviceName);
-    //   if (!name) name = getProjectDisplayName(p);
-    //   return {
-    //     ...p,
-    //     projectName: name || "Unnamed Project"
-    //   }
-    // });
-
-
     const normalizedProjects = projects.map((p) => {
   let name =
     p.projectName ||

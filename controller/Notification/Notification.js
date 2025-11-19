@@ -63,26 +63,6 @@ const sendNotification = async (req, res) => {
   }
 };
 
-// const getNotifications = async (req, res) => {
-//     try {
-//         const { userId } = req.params;
-
-//         const notifications = await Notification.find({ users: userId })
-//             .sort({ createdAt: -1 })
-//             .lean();
-
-//         // mark which notifications are read for this user
-//         const result = notifications.map(n => ({
-//             ...n,
-//             read: n.readBy.includes(userId)
-//         }));
-
-//         res.status(200).json({ notifications: result });
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: "Server Error", error });
-//     }
-// };
 
 
 const getAllNotifications = async (req, res) => {
@@ -133,33 +113,6 @@ const markAsRead = async (req, res) => {
         res.status(500).json({ message: "Server Error", error });
     }
 };
-
-// ✅ Get all (unique) notifications (for admin)
-// const getAllNotifications = async (req, res) => {
-//     try {
-//         const notifications = await Notification.find().sort({ createdAt: -1 }).lean();
-
-//         // Group by unique combination
-//         const uniqueMap = new Map();
-//         notifications.forEach((n) => {
-//             const key = `${n.title}-${n.body}-${n.category || ""}`;
-//             if (!uniqueMap.has(key)) {
-//                 uniqueMap.set(key, n);
-//             }
-//         });
-
-//         const uniqueNotifications = Array.from(uniqueMap.values());
-
-//         res.status(200).json({
-//             message: "✅ Fetched unique admin notifications successfully",
-//             total: uniqueNotifications.length,
-//             notifications: uniqueNotifications,
-//         });
-//     } catch (error) {
-//         console.error("❌ Error fetching all notifications:", error);
-//         res.status(500).json({ message: "Server Error", error });
-//     }
-// };
 const deleteNotice = async (req, res) => {
     try {
         const { id } = req.params; // notice ID from URL

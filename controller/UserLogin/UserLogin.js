@@ -71,24 +71,24 @@ const UserLogout = async (req, res) => {
 async function markAttendanceCheckIn(empId) {
   const today = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
 
-  // Check if attendance exists
   let attendance = await Attendance.findOne({ empId, date: today });
 
-  if (!attendance) {
-    const checkInTime = new Date().toLocaleTimeString("en-IN", { hour12: false });
+  if (attendance) return attendance.check_in;
 
-    attendance = await Attendance.create({
-      empId,
-      date: today,
-      check_in: checkInTime,
-      status: "Present"
-    });
+  const checkInTime = new Date().toLocaleTimeString("en-IN", { hour12: false });
+  const hour = Number(checkInTime.split(":")[0]);
 
-    return checkInTime; // Return the newly created check-in time
-  }
+  // Half-Day rule: If login after 1 PM → Half Day
+  let status = hour >= 13 ? "Half Day" : "Present";
 
-  // If attendance already exists → return stored check-in
-  return attendance.check_in;
+  attendance = await Attendance.create({
+    empId,
+    date: today,
+    check_in: checkInTime,
+    status
+  });
+
+  return checkInTime;
 }
 
 

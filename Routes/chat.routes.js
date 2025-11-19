@@ -1,22 +1,3 @@
-// const express = require("express");
-// const {
-//   sendMessage,
-//   getMessages,
-//   markAsRead,
-//   getAllChats,
-//   getChatUsers
-// } = require("../controller/chat/chat.controller");
-
-// const router = express.Router();
-
-// router.post("/send", sendMessage);
-// router.get("/messages", getMessages);
-// router.post("/mark-read", markAsRead);
-// router.get("/all", getAllChats);
-// router.get("/users", getChatUsers);
-
-// module.exports = router;
-
 const express = require("express");
 const {
   sendMessage,

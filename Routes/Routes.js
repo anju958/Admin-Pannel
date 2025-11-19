@@ -1,6 +1,19 @@
 
 const express = require("express");
 const uploadTo = require("../controller/middleware/multer");
+const multer = require("multer");
+
+const commentStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/comments/");
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  }
+});
+
+const uploadComment = multer({ storage: commentStorage });
+
 
 const { SignUpController, getEmployeesByService } = require("../controller/SignUp/SignUp");
 const { LoginAdmin } = require("../controller/Login/Login");
@@ -10,7 +23,7 @@ const { Job_Opening, get_JobOpening, DeleteJob } = require("../controller/Job_Op
 const { job_data } = require("../Update_job_no/Update_job_no");
 const {  getTraineeData } = require("../controller/Employee/getTraniee");
 const { updateUser, deleteUser } = require("../controller/SignUp/SignUpDelandUpdate");
-const { UpdateType } = require("../controller/SignUp/UpdateUserType");
+const { UpdateType, getAllEmployees, deleteEmployee } = require("../controller/SignUp/UpdateUserType");
 const { Get_ClientLead, Gen_ClientLead, deleteLead, getLeadById, sendPasswordSetupOtp, createPassword, clientLogin } = require("../controller/ClientLead/ClientLeadData");
 const { Get_Lead, Get_Client, getClientLeadById } = require("../controller/ClientLead/getClient");
 const { updateVacancy } = require("../controller/Job_Opening/UpdateJob");
@@ -24,7 +37,7 @@ const { addService, getAllServices, getServicesByDept, deleteService, updateServ
 const { createProject, getProject, getProjectById, getProjectsByClient, getProjectByProjectId, updateProject, deleteProject, getServicebyProjectId, getAssignEmpByService, getEmployeesByProjectId, getProjectDetailById } = require("../controller/Projects/Projects");
 const { getServicebyDepartment } = require("../controller/DepartmentServiceAPI/getDepartmentService");
 const { createAndSendProposal, upload, getAllProposals, updateProposal, getProposalById, deleteProposal, approveProposal } = require("../controller/Purposal/Purposal");
-const { addTask, getAllTasks, updateTask, deleteTask } = require("../controller/Task/Task");
+
 const { notifyTask } = require("../controller/Notification/NotifyTask");
 const { sendNotification, getNotifications, markAsRead, getAllNotifications, deleteNotice } = require("../controller/Notification/Notification");
 const router = require("./Roles");
@@ -49,8 +62,9 @@ const User = require('../model/Users/Users');
 const { createUser, updatePermission, getAllAdminUsers, getAdminUserById, deleteAdminUserById, resetPassword ,  } = require("../controller/userController/userController");
 const normalizeInput = require("../controller/middleware/normalizeInput");
 const { getModules } = require("../controller/Module/modules");
+const { generateSalary, regenSalary } = require("../controller/UserPannel/salary/salary");
 
-
+const taskRoutes = require("./Task/taskRoutes");
 
 
 
@@ -75,6 +89,9 @@ Router.put("/updateSelfId/:id",uploadTo().fields([
 
 )
 
+
+Router.get('/getAllEmployees',getAllEmployees)
+Router.delete('/deleteEmp/:id',deleteEmployee)
 Router.post("/proposals", upload.array("attachments"), createAndSendProposal );
 Router.put('/UpdateProposal/:id', upload.array("attachments"),updateProposal)
 Router.delete('/DeleteProposal/:id',deleteProposal)
@@ -115,14 +132,6 @@ Router.post("/createInvoice", createInvoice);
 Router.get('/AdminSummary/',getAdminSummary)
 
 
-//auth Routes
-// Router.post('/register',registerUser)
-// Router.post('/login',loginUser)
-// Router.get('/users',getAllUsers)
-
-// ---------- NORMAL ROUTES ----------
-
-// Router.use('/roles',router)
 
 Router.get("/getEmployeeByService/:serviceId", getEmployeesByService);
 Router.post("/adminLogin", normalizeInput ,LoginAdmin);
@@ -188,7 +197,7 @@ Router.get('/getprojectByPorjectId/:projectId',getProjectByProjectId)
 Router.get("/getjobvacancy", job_data);
 
 //Task api
-Router.post('/addTask',addTask)
+
 
 Router.get('/getTraineeData',getTraineeData)
 Router.delete("/deleteSignUpUser/:employeeId", deleteUser);
@@ -198,7 +207,7 @@ Router.get("/getClientLead", Get_ClientLead);
 
 //Notification
 Router.post('/notifyTask', notifyTask)
-Router.delete('/deleteTask/:id',deleteTask)
+
 
 
 //notification 
@@ -211,7 +220,7 @@ Router.delete('/deleteNotice/:id' ,  deleteNotice)
 
 Router.get('/getServices/:projectId' ,getServiceByProject)
 Router.get('/getProjectDetails/:projectId',getProjectDetailById);
-Router.get('/getAllTasks',getAllTasks)
+
 Router.get('/getEmployeeByProject/:projectId',getEmployeesByProjectId)
 
 Router.get('/leadById/:id',getLeadById)
@@ -226,7 +235,7 @@ Router.put('/updateStatus/:id',updateStatus)
 // Router.get('/getCompnayDetails' , getCompany)
 // Router.put('/updateCompnay/:id',updateCompany)
 
-Router.put('/UpdateTask/:id',updateTask)
+
 Router.get("/getLeadData", Get_Lead);
 Router.get("/getClientData", Get_Client);
 
@@ -286,6 +295,18 @@ Router.post("/checkout", async (req, res) => {
 
   }
 });
+
+//salary routes
+Router.post('/generate-salary/:empId',generateSalary)
+Router.post('/regen-salary/:empId' , regenSalary)
+Router.use("/tasks", taskRoutes);
+
+//task
+
+
+
+
+
 
 
 

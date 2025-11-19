@@ -2,31 +2,6 @@
   const Department = require('../../model/Department/AddDepartment');
   const Project = require('../../model/Project/Projects')
 
-
-  // const addService = async (req, res) => {
-  //   try {
-  //     const { serviceName, servicePrice , deptId } = req.body;
-
-  //     if (!serviceName || !deptId || !servicePrice) {
-  //       return res.status(400).json({ message: "Service name and department ID are required" });
-  //     }
-
-    
-  //     const department = await Department.findById(deptId);
-  //     if (!department) {
-  //       return res.status(404).json({ message: "Department not found" });
-  //     }
-
-  
-  //     const newService = new Service({ serviceName, deptId  ,servicePrice});
-  //     const savedService = await newService.save();
-
-  //     res.status(201).json(savedService);
-  //   } catch (error) {
-  //     res.status(500).json({ message: error.message });
-  //   }
-  // };
-
   const addService = async (req, res) => {
   try {
     const { serviceName, servicePrice, deptId } = req.body;
