@@ -49,7 +49,7 @@ const { updateCompany, createCompany, getCompany } = require("../controller/Comp
 const {getAllInvoices, getInvoiceById, deleteInvoice ,createInvoice , markInvoicePaid, getInvoicesByClient, addPayment} = require('../controller/Invoice/Invoice');
 const { getReportsSummary } = require("../controller/Reports/Reports");
 const { getAdminSummary } = require("../controller/Summary/Summary");
-const { getAllLeaves, getMonthlyAcceptedLeaves, addLeave } = require("../controller/UserPannel/Leaves/Leaves");
+const { getAllLeaves, getMonthlyAcceptedLeaves, addLeave, updateLeaveStatus, getAllLeavesAdmin } = require("../controller/UserPannel/Leaves/Leaves");
 const { getSalaryStats, getSalaryDetails } = require("../controller/User/Salary/Salary");
 const { getTasksByEmployee } = require("../controller/User/TaskAssign/TaskAssign");
 const { getEmployeeStats } = require("../model/userPannel/HomePage/HomePage");
@@ -65,6 +65,8 @@ const { getModules } = require("../controller/Module/modules");
 const { generateSalary, regenSalary } = require("../controller/UserPannel/salary/salary");
 
 const taskRoutes = require("./Task/taskRoutes");
+const { getClientDashboardSummary } = require("../controller/clientDashboard/clientHome/clientSummary");
+const { getClientProjects, getClientProject, getClientProposals, getClientProposal, getClientProfile, updateClientProfile, getClientTasks, getClientTask } = require("../controller/clientDashboard/clientHome/clientDashboardExtras");
 
 
 
@@ -254,16 +256,15 @@ Router.post('/client/create-password',createPassword)
 Router.post('/clientLogin', clientLogin)
 
 
-
-// Router.post("/add_attendance", add_attendance);
-// Router.get("/get_attendance", getAttendance);
-
 //leaves routes 
 Router.post('/addLeave', addLeave)
 
 Router.get('/getLeave', getLeaves)
 Router.get('/getAllLeaves/:employeeId', getAllLeaves)
-Router.get('/getMonthlyAcceptedLeaves/:employeeId',getMonthlyAcceptedLeaves)
+Router.get('/admin/getAllLeave', getAllLeavesAdmin)
+// Router.get('/getMonthlyAcceptedLeaves/:employeeId',getMonthlyAcceptedLeaves)
+Router.put('/admin/updateLeaveStatus/:leaveId', updateLeaveStatus)
+
 // Router.get('/getTotalProjects/:employeeId', getTotalProjects)
 
 
@@ -301,8 +302,18 @@ Router.post('/generate-salary/:empId',generateSalary)
 Router.post('/regen-salary/:empId' , regenSalary)
 Router.use("/tasks", taskRoutes);
 
-//task
+//client Routes
+Router.get('/client/dashboard/:clientId',getClientDashboardSummary)
+Router.get('/client/client-projects/:clientId',getClientProjects)
+Router.get('/client/client-project/:projectId',getClientProject)
+Router.get('/client/client-proposals/:clientId',getClientProposals)
+Router.get('/client/client-proposal/:proposalId',getClientProposal)
 
+Router.get('/client/profile/:clientId',getClientProfile)
+Router.put('/client/profile/:clientId',updateClientProfile)
+
+Router.get('/client/client-tasks/:clientId',getClientTasks)
+Router.get('/client/client-task/:taskId',getClientTask)
 
 
 

@@ -11,6 +11,7 @@ const LeaveSchema = new mongoose.Schema({
   paid: { type: Boolean, default: false },
   leave_category: { type: String },
   isHalfDay: { type: Boolean, default: false },
+    adminNote: { type: String, default: "" },
   leaveId: { type: String }
 }, { timestamps: true });
 

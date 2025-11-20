@@ -207,6 +207,25 @@ const getLeaveHistory = async (req, res) => {
 };
 
 
+const getAllLeavesAdmin = async (req, res) => {
+  try {
+    const leaves = await Leave.find()
+      .populate("employeeId")      // Get employee name, email, etc.
+      .sort({ createdAt: -1 });    // Latest first
+
+    res.status(200).json(leaves);
+
+  } catch (err) {
+    console.error("Admin Get All Leaves Error:", err);
+    res.status(500).json({
+      message: "Server error while fetching leaves",
+      error: err.message,
+    });
+  }
+};
+
+
+
 /* -------------------------------------------
    APPROVE / REJECT LEAVE (Admin)
 -------------------------------------------- */
@@ -278,6 +297,51 @@ const getMonthlyAcceptedLeaves = async (req, res) => {
 const exportLeaves = async (req, res) => {
   // optional export API (frontend export already works with XLSX)
 };
+// const updateLeaveStatus = async (req, res) => {
+//   try {
+//     const { status, paid } = req.body;
+
+//     if (!["Approved", "Rejected", "Pending"].includes(status)) {
+//       return res.status(400).json({ message: "Invalid status" });
+//     }
+
+//     const leave = await Leave.findByIdAndUpdate(
+//       req.params.leaveId,
+//       { status, paid },
+//       { new: true }
+//     );
+
+//     if (!leave) return res.status(404).json({ message: "Leave not found" });
+
+//     res.json({ success: true, leave });
+
+//   } catch (err) {
+//     res.status(500).json({ message: "Error updating leave" });
+//   }
+// };
+
+const updateLeaveStatus = async (req, res) => {
+  try {
+    const { status, paid, adminNote } = req.body;   // ← added adminNote here
+
+    if (!["Approved", "Rejected", "Pending"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const leave = await Leave.findByIdAndUpdate(
+      req.params.leaveId,
+      { status, paid, adminNote },   // ← save adminNote here
+      { new: true }
+    );
+
+    if (!leave) return res.status(404).json({ message: "Leave not found" });
+
+    res.json({ success: true, leave });
+
+  } catch (err) {
+    res.status(500).json({ message: "Error updating leave" });
+  }
+};
 
 
 module.exports = {
@@ -285,5 +349,7 @@ module.exports = {
   getAllLeaves,
   getLeaveHistory,
   getMonthlyAcceptedLeaves,
+  getAllLeavesAdmin,
+  updateLeaveStatus
   // updateLeaveStatus,
 };
