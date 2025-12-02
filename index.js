@@ -4,9 +4,9 @@
   const cors = require('cors');
   const express = require('express');
   require('dotenv').config();
-  require("./corn/monthlySalaryCron");
-  require("./corn/autoAbsentCron");
-  require("./corn/autoLeaveMarkCron");
+  require("./cronJobs/monthlySalaryCron");
+  require("./cronJobs/autoAbsentCron");
+  require("./cronJobs/autoLeaveMarkCron");
 
   const path = require('path');
   const chatRoutes = require("./Routes/chat.routes");
@@ -28,6 +28,7 @@
   mongoose.connect(URL, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('✅ MongoDB is connected'))
     .catch((err) => console.log('❌ Server Error', err));
+    require('./cronJobs/attendanceCron')
 
   // Routes
   app.use('/api', Router);

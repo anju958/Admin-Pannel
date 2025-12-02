@@ -5,12 +5,14 @@ const SignUp = require("../../../model/SignUp/SignUp");
 /* -------------------------------------------
    ADD LEAVE (Employee Apply Leave)
 -------------------------------------------- */
+
+
 const addLeave = async (req, res) => {
   try {
     const {
       employeeId,
-      leave_type,        // Full Day / Half Day
-      leave_category,    // Casual / Sick / Earned
+      leave_type,      
+      leave_category,  
       from_date,
       to_date,
       reason
@@ -20,7 +22,7 @@ const addLeave = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Detect objectId or employeeId string
+    // Detect objectId or plain employeeId string
     const isObjectId = mongoose.Types.ObjectId.isValid(employeeId);
 
     const emp = isObjectId
@@ -29,22 +31,34 @@ const addLeave = async (req, res) => {
 
     if (!emp) return res.status(404).json({ message: "Employee not found" });
 
-    // Convert dates
-    const start = new Date(from_date);
-    const end = new Date(to_date);
+    // --------------------------------------------------------------------
+    // ⭐ FIX: Convert DD/MM/YYYY → YYYY-MM-DD
+    // --------------------------------------------------------------------
+    function parseDate(d) {
+      if (typeof d === "string" && d.includes("/")) {
+        // d = "16/11/2025"
+        const [day, month, year] = d.split("/");
+        return new Date(`${year}-${month}-${day}`);
+      }
+      return new Date(d);
+    }
+
+    const start = parseDate(from_date);
+    const end = parseDate(to_date);
+
+    if (isNaN(start) || isNaN(end)) {
+      return res.status(400).json({ message: "Invalid date format" });
+    }
 
     if (end < start) {
       return res.status(400).json({ message: "Invalid date range" });
     }
 
-    // Prevent overlapping leave
+    // Prevent overlapping leave ranges
     const overlap = await Leave.findOne({
       employeeId: emp._id,
       $or: [
-        {
-          from_date: { $lte: end },
-          to_date: { $gte: start },
-        },
+        { from_date: { $lte: end }, to_date: { $gte: start } },
       ],
     });
 
@@ -54,21 +68,15 @@ const addLeave = async (req, res) => {
       });
     }
 
-    // -------------------------
-    // ⭐ CALCULATE LEAVE DAYS
-    // -------------------------
+    // Calculate leave days
     let days = 1;
-
     if (leave_type === "Half Day") {
       days = 0.5;
     } else {
-      days =
-        Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      days = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
     }
 
-    // -------------------------
-    // ⭐ CHECK EMPLOYEE SENIORITY
-    // -------------------------
+    // CHECK EMPLOYEE SENIORITY
     const joiningDate = new Date(emp.joiningDate);
     const today = new Date();
 
@@ -78,11 +86,7 @@ const addLeave = async (req, res) => {
 
     let paid = false;
 
-    // -------------------------
-    // ⭐ RULE: 3 Months Completed?
-    // -------------------------
     if (diffMonths >= 3) {
-      // Check how many paid leaves used this month
       const startMonth = new Date(today.getFullYear(), today.getMonth(), 1);
       const endMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
@@ -92,17 +96,11 @@ const addLeave = async (req, res) => {
         from_date: { $gte: startMonth, $lte: endMonth },
       });
 
-      // Allow only 1 paid leave per month
-      if (paidLeavesThisMonth < 1) {
-        paid = true;
-      } else {
-        paid = false;
-      }
+      // Only 1 paid leave allowed per month
+      paid = paidLeavesThisMonth < 1;
     }
 
-    // -------------------------
-    // ⭐ CREATE LEAVE ENTRY
-    // -------------------------
+    // CREATE LEAVE ENTRY
     const leave = new Leave({
       employeeId: emp._id,
       leave_type,
@@ -131,8 +129,6 @@ const addLeave = async (req, res) => {
     });
   }
 };
-
-
 
 
 /* -------------------------------------------

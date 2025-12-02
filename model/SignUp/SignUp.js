@@ -150,6 +150,18 @@ const SignUpSchema = new mongoose.Schema({
         type: Date,
         required: false,
     },
+    // ===== Add these fields inside SignUpSchema definition =====
+    officeStart: { type: String, default: "09:30" }, // "HH:mm"
+    officeEnd: { type: String, default: "18:30" }, // "HH:mm"
+    graceMinutes: { type: Number, default: 10 },      // e.g. 10 minutes grace
+    dailyWorkingHours: { type: Number, default: 9 }, // per-employee working hours (float allowed)
+    monthlyDeductions: [{
+        month: { type: String },        // e.g. "2025-11"
+        type: { type: String },         // "half-day", "hourly", "absent", ...
+        amount: { type: Number },
+        reason: { type: String },
+        createdAt: { type: Date, default: Date.now }
+    }],
 
     fcmTokens: [{ type: String }],
     deviceTokens: [{ type: String }],
