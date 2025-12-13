@@ -50,7 +50,7 @@
   const { getReportsSummary } = require("../controller/Reports/Reports");
   const { getAdminSummary } = require("../controller/Summary/Summary");
   const { getAllLeaves, getMonthlyAcceptedLeaves, addLeave, updateLeaveStatus, getAllLeavesAdmin } = require("../controller/UserPannel/Leaves/Leaves");
-  const { getSalaryStats, getSalaryDetails } = require("../controller/User/Salary/Salary");
+ 
   const { getTasksByEmployee } = require("../controller/User/TaskAssign/TaskAssign");
   const { getEmployeeStats } = require("../model/userPannel/HomePage/HomePage");
   const { updateSelfProfile, getEmployeeById } = require("../controller/SignUp/UpdateEmplyeeSelf");
@@ -67,10 +67,16 @@
   const taskRoutes = require("./Task/taskRoutes");
   const { getClientDashboardSummary } = require("../controller/clientDashboard/clientHome/clientSummary");
   const { getClientProjects, getClientProject, getClientProposals, getClientProposal, getClientProfile, updateClientProfile, getClientTasks, getClientTask } = require("../controller/clientDashboard/clientHome/clientDashboardExtras");
-const { createHoliday, getAllHolidays, deleteHoliday } = require("../controller/Holiday/holidayController");
-const { getSalaryByMonth, generateSalary, regenSalary, getSalaryHistory, requestAccess, approveAccess, getAllSalaries, bulkRegenerate, regenerateSalary, markSalaryPaid, getAllEmployeesWithSalary, adminGetAllSalary, getAllEmployeeSalary}= require('../controller/UserPannel/salary/salary')
+const { createHoliday, getAllHolidays, deleteHoliday, isHoliday } = require("../controller/Holiday/holidayController");
+
+const { getEmployeeProjectList, getEmployeeTasks, getTaskDetails, getEmployeeTask } = require("../controller/Task/employeeTask");
 
 
+
+
+//salary
+ const { getSalaryStats, getSalaryDetails } = require("../controller/User/Salary/Salary"); 
+const { getSalaryByMonth, generateSalary, regenSalary, getSalaryHistory, requestAccess, approveAccess, getAllSalaries, regenerateSalary, markSalaryPaid, getAllEmployeesWithSalary, adminGetAllSalary, getAllEmployeeSalary}= require('../controller/UserPannel/salary/salary');
 
 
   const Router = express.Router();
@@ -208,6 +214,15 @@ const { getSalaryByMonth, generateSalary, regenSalary, getSalaryHistory, request
   Router.put("/movetoemployee/:employeeId", UpdateType);
   Router.post("/genClientLead", Gen_ClientLead);
   Router.get("/getClientLead", Get_ClientLead);
+  Router.get('/employeeListProject',getEmployeeProjectList)
+  Router.get('/tasks/employee/:employeeId',getEmployeeTasks)
+  Router.get('/details/:taskId',getTaskDetails)
+Router.get('/getEmplyeeTask/:employeeId' , getEmployeeTask)
+
+
+
+
+
 
   //Notification
   Router.post('/notifyTask', notifyTask)
@@ -270,8 +285,8 @@ const { getSalaryByMonth, generateSalary, regenSalary, getSalaryHistory, request
   // Router.get('/getTotalProjects/:employeeId', getTotalProjects)
 
 
-  Router.get('/getSalaryStats/:employeeId/:month/:year',getSalaryStats)
-  Router.get('/getSalaryDetails/:employeeId',getSalaryDetails)
+  // Router.get('/getSalaryStats/:employeeId/:month/:year',getSalaryStats)
+  // Router.get('/getSalaryDetails/:employeeId',getSalaryDetails)
 
 
   Router.post("/userLogin", UserLogin);
@@ -289,6 +304,9 @@ const { getSalaryByMonth, generateSalary, regenSalary, getSalaryHistory, request
   //attandance
   Router.get('/monthly' , getMonthlyAttendance)
   Router.get('/today',getTodayAttendance)
+Router.get('/employee/IsHoliday',isHoliday)
+
+
   // Router.post('/logout' ,logoutEmployee)
   Router.post("/checkout", async (req, res) => {
     try {
@@ -338,19 +356,23 @@ Router.get('/month/:empId', getSalaryByMonth)
 Router.post('/generateSalary/:empId',generateSalary);
 Router.post('/regenSalary/:empId', regenSalary);
 Router.get('/salaryhistory/:empId', getSalaryHistory)
-
 Router.post('/salary/requestAccess',requestAccess);
 Router.put('/salary/approveAccess/:requestId',approveAccess)
-
-
-//admin routes 
 Router.get('/salary/all/sal' , getAllSalaries);
-Router.put('/salary/regen/bulk', bulkRegenerate);
+
+// Router.put('/salary/regen/bulk', bulkRegenerate);
+
 Router.put('/salary/regen/:empId',regenerateSalary)
-Router.get('/salary/all',getAllEmployeeSalary)
 Router.put('/salary/update/:id',markSalaryPaid)
 Router.get('/salary/employee-wise',getAllEmployeesWithSalary)
 Router.get('/salary/all/getsalary',adminGetAllSalary)
+Router.get('/salary/all',getAllEmployeeSalary)
+
+
+
+
+
+
 
 
   module.exports = Router;

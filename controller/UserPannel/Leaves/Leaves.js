@@ -222,33 +222,6 @@ const getAllLeavesAdmin = async (req, res) => {
 
 
 
-/* -------------------------------------------
-   APPROVE / REJECT LEAVE (Admin)
--------------------------------------------- */
-// const updateLeaveStatus = async (req, res) => {
-//   try {
-//     const { leaveId } = req.params;
-//     const { status } = req.body;
-
-//     if (!["Approved", "Rejected", "Pending"].includes(status)) {
-//       return res.status(400).json({ message: "Invalid status" });
-//     }
-
-//     const leave = await Leave.findByIdAndUpdate(
-//       leaveId,
-//       { status },
-//       { new: true }
-//     );
-
-//     if (!leave)
-//       return res.status(404).json({ message: "Leave not found" });
-
-//     res.json({ message: "Leave status updated", leave });
-//   } catch (error) {
-//     res.status(500).json({ message: "Server error", error: error.message });
-//   }
-// };
-
 
 /* -------------------------------------------
    MONTHLY APPROVED LEAVES (for Dashboard)
