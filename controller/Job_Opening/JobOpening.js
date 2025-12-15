@@ -1,5 +1,7 @@
 const JobOpening = require('../../model/JobOpening/JobOpening')
 const JobOpeningNotification = require('../../model/Notification/JobOpeningNotification')
+const Department = require("../../model/Department/AddDepartment");
+const Service = require("../../model/Services/Service");
 
 const Job_Opening = async (req, res) => {
   try {
@@ -10,9 +12,16 @@ const Job_Opening = async (req, res) => {
 
     const save_job = await new_job.save();
     // 🔔 CREATE NOTIFICATION FOR ADMIN ONLY
+    
+    // 2️⃣ Get department & service names
+    const departmentData = await Department.findById(department).select("deptName");
+    const serviceData = await Service.findById(service).select("serviceName");
+
+    const departmentName = departmentData?.deptName || "Department";
+    const serviceName = serviceData?.serviceName || "Service";
     await JobOpeningNotification.create({
-      title: "New Job Opened",
-      message: `A new job has been added`,
+      title: `New Job Opened – ${departmentName} / ${serviceName}`,
+      message: `Vacancy: ${no_of_Opening} position(s) available`,
       targetRole: "admin",
     });
     return res.status(200).json({ message: "Job Added " })
