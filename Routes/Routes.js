@@ -77,6 +77,8 @@ const { getEmployeeProjectList, getEmployeeTasks, getTaskDetails, getEmployeeTas
 //salary
  const { getSalaryStats, getSalaryDetails } = require("../controller/User/Salary/Salary"); 
 const { getSalaryByMonth, generateSalary, regenSalary, getSalaryHistory, requestAccess, approveAccess, getAllSalaries, regenerateSalary, markSalaryPaid, getAllEmployeesWithSalary, adminGetAllSalary, getAllEmployeeSalary}= require('../controller/UserPannel/salary/salary');
+const { getJobOpeningNotifications, markAsReadJobOpeningNotification } = require("../controller/Notification/JobOpeningNotification");
+const authMiddleware = require("../controller/middleware/authMiddleware");
 
 
   const Router = express.Router();
@@ -369,7 +371,9 @@ Router.get('/salary/all/getsalary',adminGetAllSalary)
 Router.get('/salary/all',getAllEmployeeSalary)
 
 
-
+//Job Opening Notification
+Router.get('/getJobOpeningNotification', authMiddleware,getJobOpeningNotifications)
+Router.put('/ReadJobOpeningNotification/:id' , authMiddleware,markAsReadJobOpeningNotification)
 
 
 
