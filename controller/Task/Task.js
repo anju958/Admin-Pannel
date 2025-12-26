@@ -1,8 +1,14 @@
 // controller/Task/Task.js
+const mongoose = require("mongoose");
 const Task = require("../../model/Task/Task");
 const SignUp = require("../../model/SignUp/SignUp");
+const Project = require('../../model/Project/Projects')
 const path = require("path");
 const fs = require("fs");
+
+
+
+
 
 // ---------- Add Task (Admin) ----------
 const addTask = async (req, res) => {
@@ -93,6 +99,7 @@ const getTasks = async (req, res) => {
       dueDate: t.dueDate,
       estimatedTime: t.estimatedTime,
       timeSpent: t.timeSpent,
+       timeLogs: t.timeLogs, 
       assignedTo: t.assignedTo.map(u => ({ _id: u._id, name: u.ename || u.name || u.email })),
       status: t.status,
       priority: t.priority,
@@ -166,33 +173,6 @@ const viewTaskForClient = async (req, res) => {
 };
 
 // ---------- Update Task (Admin) ----------
-// const updateTask = async (req, res) => {
-//   try {
-//     const taskId = req.params.id;
-//     const updateData = {
-//       title: req.body.title,
-//       description: req.body.description,
-//       status: req.body.status,
-//       priority: req.body.priority,
-//       assignedTo: req.body.assignedTo,
-//       startDate: req.body.startDate,
-//       dueDate: req.body.dueDate,
-//       category: req.body.category
-//     };
-
-//     const updatedTask = await Task.findByIdAndUpdate(taskId, updateData, { new: true })
-//       .populate("assignedTo", "ename name email")
-//       .populate("clientId", "clientName")
-//       .populate("projectId", "projectName");
-
-//     if (!updatedTask) return res.status(404).json({ message: "Task not found" });
-
-//     res.status(200).json({ success: true, message: "Task updated", task: updatedTask });
-//   } catch (err) {
-//     console.error("updateTask:", err);
-//     res.status(500).json({ message: err.message });
-//   }
-// };
 
 
 const updateTask = async (req, res) => {
@@ -240,31 +220,53 @@ const deleteTask = async (req, res) => {
 };
 
 // ---------- Start Timer (Employee) ----------
+
+
+// ---------- Start Timer ----------
 const startTimer = async (req, res) => {
   try {
-    const taskId = req.params.taskId;
+    const { taskId } = req.params;
+
     const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
 
-    if (!task) return res.status(404).json({ message: "Task not found" });
+    // 🔒 Check if another task of same employee is running
+    const runningTask = await Task.findOne({
+      assignedTo: task.assignedTo,
+      timeLogs: { $elemMatch: { endAt: null } },
+      _id: { $ne: taskId }
+    });
 
-    const lastLog =
-      task.timeLogs.length > 0
-        ? task.timeLogs[task.timeLogs.length - 1]
-        : null;
+    if (runningTask) {
+      return res.status(400).json({
+        message: "Another task is already running"
+      });
+    }
 
+    // 🔒 Check if this task is already running
+    const lastLog = task.timeLogs[task.timeLogs.length - 1];
     if (lastLog && !lastLog.endAt) {
       return res.status(400).json({ message: "Timer already running" });
     }
 
+    // ▶ Start timer
     task.timeLogs.push({
       startAt: new Date(),
       endAt: null,
-      duration: 0,
+      duration: 0
     });
+
+    task.isRunning = true;
 
     await task.save();
 
-    res.json({ success: true, message: "Timer started" });
+    res.json({
+      success: true,
+      message: "Timer started",
+      startAt: task.timeLogs[task.timeLogs.length - 1].startAt
+    });
   } catch (err) {
     console.error("startTimer error:", err);
     res.status(500).json({ message: "Server error" });
@@ -272,31 +274,43 @@ const startTimer = async (req, res) => {
 };
 
 
+
 // ---------- Stop Timer (Employee) ----------
+
+// ---------- Stop Timer ----------
 const stopTimer = async (req, res) => {
   try {
-    const taskId = req.params.taskId;
+    const { taskId } = req.params;
+
     const task = await Task.findById(taskId);
-
-    if (!task) return res.status(404).json({ message: "Task not found" });
-
-    const last = task.timeLogs[task.timeLogs.length - 1];
-
-    if (!last || last.endAt) {
-      return res.status(400).json({ message: "Timer is not running" });
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
     }
 
-    last.endAt = new Date();
-    last.duration = Math.floor((last.endAt - last.startAt) / 1000);
+    const lastLog = task.timeLogs[task.timeLogs.length - 1];
 
-    task.timeSpent = task.timeLogs.reduce((acc, l) => acc + l.duration, 0);
+    if (!lastLog || lastLog.endAt) {
+      return res.status(400).json({ message: "Timer not running" });
+    }
+
+    lastLog.endAt = new Date();
+    lastLog.duration = Math.floor(
+      (lastLog.endAt - lastLog.startAt) / 1000
+    );
+
+    task.timeSpent = task.timeLogs.reduce(
+      (sum, log) => sum + (log.duration || 0),
+      0
+    );
+
+    task.isRunning = false;
 
     await task.save();
 
     res.json({
       success: true,
       message: "Timer stopped",
-      timeSpent: task.timeSpent,
+      timeSpent: task.timeSpent
     });
   } catch (err) {
     console.error("stopTimer error:", err);
@@ -304,29 +318,43 @@ const stopTimer = async (req, res) => {
   }
 };
 
-
 // ---------- Update Task Status (employee/admin) ----------
 const updateTaskStatus = async (req, res) => {
   try {
     const { taskId } = req.params;
-    const { status, reason } = req.body;
-    const update = { status };
+    const { status, reason, progress } = req.body;
 
-    if (status === "Completed") {
-      update.completedOn = new Date();
-      update.incompleteReason = "";
-    } else {
-      update.incompleteReason = reason || "";
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
     }
 
-    const task = await Task.findByIdAndUpdate(taskId, update, { new: true });
-    if (!task) return res.status(404).json({ message: "Task not found" });
-    res.json({ success: true, task });
+    task.status = status;
+
+    task.statusHistory.push({
+      status,
+      reason,
+      progress: status === "In Progress" ? Number(progress) : undefined,
+      attachment: req.file ? req.file.path : null,
+      updatedAt: new Date(),
+    });
+
+    if (status === "Completed") {
+      task.completedOn = new Date();
+    }
+
+    await task.save();
+
+    res.json({ success: true });
   } catch (err) {
-    console.error("updateTaskStatus:", err);
-    res.status(500).json({ message: err.message });
+    console.error("STATUS UPDATE ERROR:", err);
+    res.status(500).json({
+      message: "Status update failed",
+      error: err.message,
+    });
   }
 };
+
 
 // ---------- Add Comment (with optional attachment) ----------
 const addComment = async (req, res) => {
@@ -367,6 +395,58 @@ const serveAttachment = (req, res) => {
   res.sendFile(filePath);
 };
 
+
+const getEmployeesByServiceInTask = async (req, res) => {
+  try {
+    const { serviceId } = req.params;
+
+    const employees = await SignUp.find({
+      service: new mongoose.Types.ObjectId(serviceId),
+      role: "employee",
+      isActive: true
+    }).select("_id ename");
+
+    res.status(200).json({ employees });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const autoStopTimer = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    const runningTask = await Task.findOne({
+      assignedTo: employeeId,
+      timeLogs: { $elemMatch: { endAt: null } },
+    });
+
+    if (!runningTask) {
+      return res.json({ success: true, message: "No running task" });
+    }
+
+    const lastLog =
+      runningTask.timeLogs[runningTask.timeLogs.length - 1];
+
+    lastLog.endAt = new Date();
+    lastLog.duration = Math.floor(
+      (lastLog.endAt - lastLog.startAt) / 1000
+    );
+
+    runningTask.timeSpent = runningTask.timeLogs.reduce(
+      (acc, l) => acc + l.duration,
+      0
+    );
+
+    await runningTask.save();
+
+    res.json({ success: true, message: "Timer auto-stopped" });
+  } catch (err) {
+    console.error("autoStopTimer error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   addTask,
   getAllTasks,
@@ -380,5 +460,7 @@ module.exports = {
   stopTimer,
   updateTaskStatus,
   addComment,
-  serveAttachment
+  serveAttachment,
+  getEmployeesByServiceInTask,
+  autoStopTimer
 };

@@ -7,6 +7,7 @@
   require("./cronJobs/monthlySalaryCron");
   require("./cronJobs/autoAbsentCron");
   require("./cronJobs/autoLeaveMarkCron");
+const notificationRoutes = require("./Routes/notificationRoutes");
 
   const path = require('path');
   const chatRoutes = require("./Routes/chat.routes");
@@ -20,6 +21,7 @@
   app.use("/uploads", express.static(path.join(process.cwd(), "controller/uploads")));
 
   const Router = require('./Routes/Routes');
+  app.use("/api/notifications", notificationRoutes);
 
   const PORT = process.env.PORT || 5000;
   const URL = process.env.MONGO_URL;

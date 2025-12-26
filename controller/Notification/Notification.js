@@ -5,65 +5,21 @@ const { getIO } = require("../../socket");
 
 
 const sendNotification = async (req, res) => {
-  try {
-    const { title, body, category, allUsers, userIds = [] } = req.body;
-    if (!title || !body) {
-      return res.status(400).json({ message: "Title and body are required" });
-    }
+  const { title, body, allUsers, userIds = [] } = req.body;
 
-    // All users: check for duplicate
-    if (allUsers) {
-      const exists = await Notification.findOne({ title, body, category, allUsers: true });
-      if (exists) {
-        return res.status(409).json({ message: "Duplicate notification already exists for all users" });
-      }
-      const newNotification = await Notification.create({
-        title,
-        body,
-        category: category || "General",
-        allUsers: true,
-        users: [],
-        userCount: 0,
-        status: "sent",
-      });
-      return res.status(201).json({ message: "Notification created successfully", notification: newNotification });
-    }
+  const users = allUsers
+    ? []
+    : userIds.map(id => ({ userId: id }));
 
-    // Selected users: check for duplicate per user
-    if (userIds.length) {
-      for (let userId of userIds) {
-        const exists = await Notification.findOne({
-          title,
-          body,
-          category,
-          allUsers: false,
-          "users.userId": userId,
-        });
-        if (exists) {
-          return res.status(409).json({ message: "Duplicate notification exists for some selected user(s)" });
-        }
-      }
-      const usersArr = userIds.map((id) => ({ userId: id }));
-      const newNotification = await Notification.create({
-        title,
-        body,
-        category: category || "General",
-        allUsers: false,
-        users: usersArr,
-        userCount: usersArr.length,
-        status: "sent",
-      });
-      return res.status(201).json({ message: "Notification created successfully", notification: newNotification });
-    }
+  const notification = await Notification.create({
+    title,
+    body,
+    allUsers,
+    users
+  });
 
-    return res.status(400).json({ message: "No valid recipients found" });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server error", error });
-  }
+  res.json({ success: true, notification });
 };
-
-
 
 const getAllNotifications = async (req, res) => {
   try {

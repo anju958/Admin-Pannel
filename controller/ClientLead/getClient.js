@@ -45,17 +45,21 @@ const Get_Lead = async (req, res) => {
     }
 }
 const getClientLeadById = async (req, res) => {
-    try {
-        const lead = await ClientLead.findOne({ leadId: req.params.leadId });
-        if (!lead) {
-            return res.status(404).json({ message: "Lead not found" });
-        }
-        res.status(200).json(lead);
+  try {
+    const lead = await ClientLead.findById(req.params.leadId);
 
-    } catch (error) {
-        res.status(500).json({ message: "Error fetching lead", error: error.message });
-
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
     }
-}
+
+    res.status(200).json(lead);
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching lead",
+      error: error.message
+    });
+  }
+};
+
 
 module.exports = { Get_Client, Get_Lead, getClientLeadById }

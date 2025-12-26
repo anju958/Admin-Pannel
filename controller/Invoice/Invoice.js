@@ -25,48 +25,181 @@ function getProjectDisplayName(project) {
 }
 
 
+
+// const createInvoice = async (req, res) => {
+//   try {
+//     const {
+//       clientId,
+//       clientEmail,
+//       clientName,
+//       projects,
+//       dueDate,
+//       sendNow,
+//     } = req.body;
+
+//     if (!clientId || !clientName || !clientEmail) {
+//       return res.status(400).json({
+//         error: "clientId, clientName and clientEmail required.",
+//       });
+//     }
+
+//     if (!projects || !projects.length) {
+//       return res.status(400).json({ error: "Projects required" });
+//     }
+
+//     // Normalize project names
+//     const normalizedProjects = projects.map((p) => ({
+//       ...p,
+//       projectName: p.projectName || "Unnamed Project",
+//       amount: Number(p.amount || 0),
+//     }));
+
+//     const totalAmount = normalizedProjects.reduce(
+//       (sum, p) => sum + p.amount,
+//       0
+//     );
+
+//     const invoice = new Invoice({
+//       clientId,
+//       clientEmail,
+//       clientName,
+//       projects: normalizedProjects,
+//       invoiceNumber: "INV-" + Date.now(),
+//       dueDate,
+//       totalAmount,
+//       sentFrom: process.env.EMAIL_USER,
+//       status: sendNow ? "Pending" : "Draft",
+//       isDraft: !sendNow,
+//     });
+
+//     await invoice.save();
+
+//     // 🟡 Draft only
+//     if (!sendNow) {
+//       return res.status(201).json({
+//         success: true,
+//         message: "Invoice saved as draft.",
+//         invoice,
+//       });
+//     }
+
+//     // ✅ CORRECT SMTP CONFIG
+//     const transporter = nodemailer.createTransport({
+//       host: "smtp.gmail.com",
+//       port: 587,
+//       secure: false,
+//       auth: {
+//         user: process.env.EMAIL_USER,
+//         pass: process.env.EMAIL_PASS,
+//       },
+//     });
+
+//     // ✅ Verify SMTP
+//     await transporter.verify();
+//     console.log("✅ SMTP ready");
+
+//     const fromEmail = process.env.EMAIL_USER;
+
+//     await transporter.sendMail({
+//       from: `"Premier WebTech" <${fromEmail}>`,
+//       to: clientEmail,
+//       subject: `Invoice #${invoice.invoiceNumber} (₹${totalAmount})`,
+//       html: `
+//         <div style="font-family: Arial; max-width: 600px;">
+//           <h2>Invoice #${invoice.invoiceNumber}</h2>
+//           <p>Dear ${clientName},</p>
+
+//           <table border="1" width="100%" cellpadding="8" cellspacing="0">
+//             ${normalizedProjects
+//               .map(
+//                 (p) => `
+//                   <tr>
+//                     <td>${p.projectName}</td>
+//                     <td align="right">₹${p.amount.toLocaleString()}</td>
+//                   </tr>`
+//               )
+//               .join("")}
+//             <tr>
+//               <td><strong>Total</strong></td>
+//               <td align="right"><strong>₹${totalAmount.toLocaleString()}</strong></td>
+//             </tr>
+//           </table>
+
+//           <p><strong>Due Date:</strong> ${new Date(dueDate).toLocaleDateString()}</p>
+//           <p>Regards,<br/>Premier WebTech</p>
+//         </div>
+//       `,
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Invoice created and sent.",
+//       invoice,
+//     });
+//   } catch (err) {
+//     console.error("❌ createInvoice error:", err);
+//     res.status(500).json({
+//       error: "Invoice creation failed",
+//       details: err.message,
+//     });
+//   }
+// };
+
+
 const createInvoice = async (req, res) => {
   try {
-    const { clientId, clientEmail, clientName, projects, dueDate, sendNow } = req.body;
+    const {
+      clientId,
+      clientEmail,
+      clientName,
+      projects,
+      dueDate,
+      sendNow,
+    } = req.body;
 
+    /* ---------- BASIC VALIDATION ---------- */
     if (!clientId || !clientName || !clientEmail) {
-      return res
-        .status(400)
-        .json({ error: "clientId, clientName and clientEmail required." });
+      return res.status(400).json({
+        error: "clientId, clientName and clientEmail are required",
+      });
     }
 
     if (!projects || !projects.length) {
-      return res.status(400).json({ error: "Projects required" });
+      return res.status(400).json({ error: "At least one project is required" });
     }
 
-   
-    console.log("RAW PROJECTS PAYLOAD:", projects);
-    const normalizedProjects = projects.map((p) => {
-  let name =
-    p.projectName ||
-    p.name ||
-    p.title ||
-    p.project_title ||
-    p.project_name ||
-    p.project ||
-    (p.service && (p.service.serviceName || p.service.name)) || // <- covers some nested
-    (typeof p.service === "string" && p.service) ||
-    (Array.isArray(p.projectCategory) && p.projectCategory.length
-      ? p.projectCategory.join(", ")
-      : undefined);
+    if (!dueDate) {
+      return res.status(400).json({ error: "Due date is required" });
+    }
 
-  if (!name) name = getProjectDisplayName(p);
-  return {
-    ...p,
-    projectName: name || "Unnamed Project"
-  };
-});
+    /* ---------- FETCH COMPANY DETAILS ---------- */
+    const company = await companyDetail.findOne();
+
+    if (!company) {
+      return res.status(400).json({
+        error: "Company details not configured",
+      });
+    }
+
+    if (!company.email) {
+      return res.status(400).json({
+        error: "Company email missing in company details",
+      });
+    }
+
+    /* ---------- NORMALIZE PROJECTS ---------- */
+    const normalizedProjects = projects.map((p) => ({
+      projectId: p.projectId,
+      projectName: p.projectName || "Unnamed Project",
+      amount: Number(p.amount || 0),
+    }));
 
     const totalAmount = normalizedProjects.reduce(
-      (sum, p) => sum + Number(p.amount || 0),
+      (sum, p) => sum + p.amount,
       0
     );
 
+    /* ---------- CREATE INVOICE ---------- */
     const invoice = new Invoice({
       clientId,
       clientEmail,
@@ -75,97 +208,122 @@ const createInvoice = async (req, res) => {
       invoiceNumber: "INV-" + Date.now(),
       dueDate,
       totalAmount,
-      sentFrom: process.env.EMAIL_USER,
+      companySnapshot: {
+        name: company.name,
+        email: company.email,
+        phone: company.phone,
+        website: company.website,
+        taxId: company.taxId,
+        address: company.address,
+        bank: company.bank,
+      },
       status: sendNow ? "Pending" : "Draft",
       isDraft: !sendNow,
+      paidAmount: 0,
+      remainingAmount: totalAmount,
     });
 
     await invoice.save();
 
-    // ✅ If user only wants to save, skip sending email
+    /* ---------- IF ONLY DRAFT ---------- */
     if (!sendNow) {
       return res.status(201).json({
         success: true,
-        message: "Invoice saved as draft.",
+        message: "Invoice saved as draft",
         invoice,
       });
     }
 
-    // ✅ Otherwise send email
+    /* ---------- EMAIL CONFIG ---------- */
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
       auth: {
-        user: process.env.EMAIL_USER,
+        user: process.env.EMAIL_USER, // SMTP login
         pass: process.env.EMAIL_PASS,
       },
     });
 
+    await transporter.verify();
 
-
-    const company = await companyDetail.findOne(); // fetch once before this block
+    /* ---------- SEND EMAIL ---------- */
     await transporter.sendMail({
-      from: company?.email?.trim() || process.env.EMAIL_USER,
+      from: `"${company.name}" <${company.email}>`,
       to: clientEmail,
       subject: `Invoice #${invoice.invoiceNumber} (₹${totalAmount})`,
       html: `
-    <div style="font-family: Arial, sans-serif; max-width: 660px; margin: auto; border-radius: 12px; border: 1px solid #eee; padding: 32px;">
+      <div style="font-family: Arial, sans-serif; max-width: 660px; margin: auto; border: 1px solid #eee; padding: 32px; border-radius: 12px;">
 
-      <h2 style="margin-bottom: 12px; color: #1976d2;">Invoice from Premier WebTech</h2>
+        <h2 style="color:#1976d2;">Invoice from ${company.name}</h2>
 
-      <p>Dear <b>${clientName}</b>,</p>
-      <p>Please pay your invoice <b style="color:#222;">#${invoice.invoiceNumber}</b>:</p>
+        <p>Dear <b>${clientName}</b>,</p>
+        <p>Please find your invoice details below:</p>
 
-      <table style="border-collapse: collapse; width: 100%; margin: 24px 0;">
-        <thead>
-          <tr>
-            <th style="border: 1px solid #ccc; padding: 10px; text-align: left; background: #fafafa;">Service/Project</th>
-            <th style="border: 1px solid #ccc; padding: 10px; text-align: right; background: #fafafa;">Price (₹)</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${normalizedProjects.map(p => `
-          <tr>
-            <td style="border: 1px solid #ccc; padding: 10px;">${p.projectName}</td>
-            <td style="border: 1px solid #ccc; padding: 10px; text-align: right;">${Number(p.amount || 0).toLocaleString()}</td>
-          </tr>`).join("")}
-          <tr>
-            <td style="border: 1px solid #ccc; padding: 10px; font-weight: bold;">Total</td>
-            <td style="border: 1px solid #ccc; padding: 10px; text-align: right; font-weight: bold;">₹${totalAmount.toLocaleString()}</td>
-          </tr>
-        </tbody>
-      </table>
+        <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+          <thead>
+            <tr>
+              <th style="border:1px solid #ccc; padding:10px;">Project</th>
+              <th style="border:1px solid #ccc; padding:10px; text-align:right;">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${normalizedProjects
+              .map(
+                (p) => `
+                <tr>
+                  <td style="border:1px solid #ccc; padding:10px;">${p.projectName}</td>
+                  <td style="border:1px solid #ccc; padding:10px; text-align:right;">₹${p.amount.toLocaleString()}</td>
+                </tr>
+              `
+              )
+              .join("")}
+            <tr>
+              <td style="border:1px solid #ccc; padding:10px; font-weight:bold;">Total</td>
+              <td style="border:1px solid #ccc; padding:10px; text-align:right; font-weight:bold;">₹${totalAmount.toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
 
-      <div style="margin:16px 0;">
-        <b>Bank Payment Details:</b>
-        <ul style="padding-left: 1em;">
-          <li>Bank: ${company?.bank?.bankName || ''}</li>
-          <li>Account Number: ${company?.bank?.accountNumber || ''}</li>
-          <li>IFSC: ${company?.bank?.ifsc || ''}</li>
-          ${company?.taxId ? `<li>GST: ${company.taxId}</li>` : ''}
+        <p><b>Due Date:</b> ${new Date(dueDate).toLocaleDateString()}</p>
+
+        <hr />
+
+        <h4>Bank Details</h4>
+        <ul>
+          <li><b>Bank:</b> ${company.bank?.bankName || "-"}</li>
+          <li><b>Account No:</b> ${company.bank?.accountNumber || "-"}</li>
+          <li><b>IFSC:</b> ${company.bank?.ifsc || "-"}</li>
+          ${company.taxId ? `<li><b>GST:</b> ${company.taxId}</li>` : ""}
         </ul>
-      </div>
 
-      <hr style="margin: 20px 0;">
+        <hr />
 
-      <div style="font-size: 14px; line-height: 1.4; color: #555;">
-        <p><b>Address:</b> ${company?.address?.street || ''}${company?.address?.city ? ', ' + company.address.city : ''}${company?.address?.state ? ', ' + company.address.state : ''}${company?.address?.country ? ', ' + company.address.country : ''}${company?.address?.zip ? ', ZIP: ' + company.address.zip : ''}</p>
-        <p><b>Email:</b> ${company?.email?.trim() || ''} <b>Phone:</b> ${company?.phone || ''}</p>
-        <p><b>Website:</b> <a href="${company?.website || '#'}">${company?.website || ''}</a></p>
+        <p style="font-size:14px; color:#555;">
+          <b>${company.name}</b><br/>
+          ${company.address?.street || ""}, ${company.address?.city || ""}<br/>
+          ${company.address?.state || ""}, ${company.address?.country || ""} - ${company.address?.zip || ""}<br/>
+          <b>Email:</b> ${company.email} | <b>Phone:</b> ${company.phone}<br/>
+          <b>Website:</b> <a href="${company.website}">${company.website}</a>
+        </p>
+
       </div>
-    </div>
-  `
+      `,
     });
+
     res.status(201).json({
       success: true,
-      message: "Invoice created and sent.",
+      message: "Invoice created and sent successfully",
       invoice,
     });
   } catch (err) {
-    console.error("createInvoice error:", err);
-    res.status(500).json({ error: err.message });
+    console.error("❌ createInvoice error:", err);
+    res.status(500).json({
+      error: "Invoice creation failed",
+      details: err.message,
+    });
   }
 };
-
 
 const getAllInvoices = async (req, res) => {
   try {

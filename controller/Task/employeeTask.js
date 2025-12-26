@@ -37,31 +37,30 @@ const getEmployeeProjectList = async (req, res) => {
     res.status(500).json({ error: "Server Error" });
   }
 };
-
 const getEmployeeTasks = async (req, res) => {
   try {
     const { employeeId } = req.params;
 
-    const employee = await SignUp.findById(employeeId, "ename employeeId");
+    const employee = await SignUp.findById(
+      employeeId,
+      "ename employeeId"
+    );
 
     const tasks = await Task.find({ assignedTo: employeeId })
       .populate("projectId", "projectName")
       .populate("clientId", "leadName");
 
-    const formatted = tasks.map(t => ({
+    const formattedTasks = tasks.map(t => ({
       taskId: t._id,
-      taskName: t.title,
-      projectName: t.projectId?.projectName,
-      clientName: t.clientId?.clientName,
-      priority: t.priority,
+      taskName: t.title,                // ✅ map title → taskName
+      projectName: t.projectId?.projectName || "",
       status: t.status,
-      startDate: t.startDate,
-      deadline: t.dueDate
+      priority: t.priority
     }));
 
     res.json({
       employee,
-      tasks: formatted
+      tasks: formattedTasks
     });
 
   } catch (err) {
@@ -69,6 +68,8 @@ const getEmployeeTasks = async (req, res) => {
     res.status(500).json({ error: "Server Error" });
   }
 };
+
+
 
 const getTaskDetails = async (req, res) => {
   try {
@@ -139,5 +140,6 @@ const getEmployeeTask = async (req, res) => {
     res.status(500).json({ message: "Error fetching employee tasks" });
   }
 };
+
 
 module.exports = { getEmployeeProjectList ,   getEmployeeTasks ,  getTaskDetails , getEmployeeTask} 

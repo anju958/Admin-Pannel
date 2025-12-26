@@ -18,6 +18,10 @@ const taskSchema = new mongoose.Schema(
     startDate: { type: Date, required: true },
     dueDate: { type: Date, required: true },
 
+    isRunning: {
+      type: Boolean,
+      default: false
+    },
     estimatedTime: { type: Number, default: 0 }, // seconds
     timeSpent: { type: Number, default: 0 }, // seconds
 
@@ -34,6 +38,20 @@ const taskSchema = new mongoose.Schema(
       enum: ["Pending", "In Progress", "Completed"],
       default: "Pending",
     },
+
+    statusHistory: [
+      {
+        status: {
+          type: String,
+          enum: ["Pending", "In Progress", "Completed"],
+          required: true
+        },
+        reason: String,
+        progress: Number,
+        attachment: String,
+        updatedAt: { type: Date, default: Date.now }
+      }
+    ],
 
     completedOn: { type: Date, default: null },
 

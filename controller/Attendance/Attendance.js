@@ -5,318 +5,6 @@ const Leave = require('../../model/userPannel/Leaves/Leaves');
 const Holiday = require("../../model/Holiday/Holiday");
 const mongoose = require('mongoose');
 
-/**
- * CONFIG
- */
-const TIME_ZONE = 'Asia/Kolkata';
-const DEFAULT_OFFICE_START = '09:30';   // 9:30 AM
-const DEFAULT_OFFICE_END = '18:30';     // 6:30 PM (24-hr format)
-const DEFAULT_GRACE = 10;               // 10 min grace
-
-function normalizeDate(d) {
-  const dt = new Date(d);
-  return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
-}
-
-/* ---------------------------
-   Time helpers (IST-aware)
-----------------------------*/
-function getISTDate() {
-  const dateIST = new Date().toLocaleString("en-US", { timeZone: TIME_ZONE });
-  return new Date(dateIST);
-}
-
-function formatDateIST(dateInput) {
-  return new Date(dateInput).toLocaleDateString('en-CA', { timeZone: TIME_ZONE }); // "YYYY-MM-DD"
-}
-
-// kept for compatibility
-function formatDate(dateInput) {
-  return formatDateIST(dateInput);
-}
-
-function formatTime(dateInput = new Date()) {
-  return new Date(dateInput).toLocaleTimeString('en-IN', {
-    hour12: false,
-    timeZone: TIME_ZONE
-  }); // "HH:mm:ss"
-}
-
-function hhmmToISTDate(dateStr, hhmm) {
-  const [h, m] = hhmm.split(':').map(Number);
-  const dt = new Date(`${dateStr}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`);
-  const ist = new Date(dt.toLocaleString("en-US", { timeZone: TIME_ZONE }));
-  return ist;
-}
-
-function timeStringToISTDate(dateStr, timeString) {
-  const dt = new Date(`${dateStr}T${timeString}`);
-  return new Date(dt.toLocaleString("en-US", { timeZone: TIME_ZONE }));
-}
-
-/* ---------------------------
-   Salary helpers
-----------------------------*/
-function perDaySalary(emp) {
-  const monthly = emp.givenSalary || 0;
-  const fallback = 26;
-  const days = emp.monthlyWorkingDays || fallback;
-  return monthly / days;
-}
-
-function perHourSalary(emp) {
-  const perDay = perDaySalary(emp);
-  const hours = emp.dailyWorkingHours || 9;
-  if (!hours || hours === 0) return 0;
-  return perDay / hours;
-}
-
-/* ---------------------------
-   Month helpers
-----------------------------*/
-function getMonthRange(year, month) {
-  const mi = Number(month) - 1;
-  const start = new Date(year, mi, 1);
-  const end = new Date(year, mi + 1, 0, 23, 59, 59, 999);
-  const days = new Date(year, mi + 1, 0).getDate();
-  return { start, end, days };
-}
-
-function datesArray(year, month) {
-  const { days } = getMonthRange(year, month);
-  const arr = [];
-  const mm = String(month).padStart(2, '0');
-  for (let d = 1; d <= days; d++) {
-    const dd = String(d).padStart(2, '0');
-    arr.push(`${year}-${mm}-${dd}`);
-  }
-  return arr;
-}
-
-/* Build UTC instant for an IST local date/time */
-function parseISTLocalToUTC(dateKey, timeStr = '00:00:00') {
-  const [yyyy, mm, dd] = dateKey.split('-').map(Number);
-  const [hh = 0, mins = 0, ss = 0] = timeStr.split(':').map(Number);
-  const istOffsetMs = 5.5 * 60 * 60 * 1000;
-  const utcInstant = Date.UTC(yyyy, mm - 1, dd, hh, mins, ss) - istOffsetMs;
-  return new Date(utcInstant);
-}
-
-/* ---------------------------
-   Leave helpers
-----------------------------*/
-
-/**
- * Build leave map for a given employee in given month:
- * { "YYYY-MM-DD": { paid, isHalfDay } }
- */
-async function buildLeaveMapForEmployee(employeeId, start, end) {
-  const leaves = await Leave.find({
-    employeeId,
-    status: "Approved",
-    from_date: { $lte: end },
-    to_date: { $gte: start },
-  }).lean();
-
-  const leaveMap = {};
-
-  for (const lv of leaves) {
-    // normalize range inside month
-    let from = lv.from_date < start ? new Date(start) : new Date(lv.from_date);
-    let to = lv.to_date > end ? new Date(end) : new Date(lv.to_date);
-
-    // iterate each day
-    for (let dt = new Date(from); dt <= to; dt.setDate(dt.getDate() + 1)) {
-      const key = formatDateIST(dt); // "YYYY-MM-DD"
-      leaveMap[key] = {
-        paid: !!lv.paid,
-        isHalfDay: !!lv.isHalfDay,
-        leave_type: lv.leave_type || '',
-      };
-    }
-  }
-
-  return leaveMap;
-}
-
-/**
- * Build holiday set for a given month
- * holidaySet has keys "YYYY-MM-DD"
- */
-async function buildHolidaySet(start, end) {
-  try {
-    const hols = await Holiday.find({
-      date: { $gte: start, $lte: end }
-    }).lean();
-
-    const set = new Set();
-    for (const h of hols) {
-      const key = formatDateIST(h.date);
-      set.add(key);
-    }
-    return set;
-  } catch (e) {
-    // if Holiday model not ready, ignore
-    console.error("Holiday fetch error (ignored):", e.message);
-    return new Set();
-  }
-}
-
-/* ---------------------------
-   Recalculate a day's lateness/status for non-leave working days
-----------------------------*/
-async function recalcAttendanceRow(att, emp) {
-  try {
-    if (!att) return att;
-
-    const dateKey = formatDateIST(att.date); // "YYYY-MM-DD"
-    const officeStart = emp.officeStart || DEFAULT_OFFICE_START;
-    const grace = typeof emp.graceMinutes === "number" ? emp.graceMinutes : DEFAULT_GRACE;
-
-    if (!att.check_in) {
-      // no check-in: absent unless already some specific status
-      if (!att.status || att.status.toLowerCase() === 'absent') {
-        att.isLateMinutes = 0;
-        att.status = 'Absent';
-      }
-      return att;
-    }
-
-    const officeStartDt = hhmmToISTDate(dateKey, officeStart);
-    const graceDt = new Date(officeStartDt.getTime() + grace * 60000);
-    const checkInDt = timeStringToISTDate(dateKey, att.check_in);
-
-    let lateMinutes = Math.max(0, Math.round((checkInDt - graceDt) / 60000));
-    if (isNaN(lateMinutes)) lateMinutes = 0;
-    att.isLateMinutes = lateMinutes;
-
-    const halfDayThreshold = 180;  // 3 hours late
-    const absentThreshold = 300;   // 5 hours late
-
-    if (lateMinutes === 0) att.status = 'Present';
-    else if (lateMinutes > 0 && lateMinutes < halfDayThreshold) att.status = 'Present';
-    else if (lateMinutes >= halfDayThreshold && lateMinutes < absentThreshold) att.status = 'Half Day';
-    else att.status = 'Absent';
-
-    // salary deduction
-    const hourSalary = perHourSalary(emp);
-    let deductedHours = lateMinutes / 60;
-    let deductionAmount = +(deductedHours * hourSalary).toFixed(2);
-
-    if (att.status === 'Half Day') {
-      deductionAmount = +(perDaySalary(emp) / 2).toFixed(2);
-      att.deductedHours = (emp.dailyWorkingHours || 9) / 2;
-    } else if (att.status === 'Absent') {
-      deductionAmount = +(perDaySalary(emp)).toFixed(2);
-      att.deductedHours = (emp.dailyWorkingHours || 9);
-    } else {
-      att.deductedHours = Math.round((deductedHours + Number.EPSILON) * 100) / 100;
-    }
-
-    att.deductionAmount = deductionAmount;
-    return att;
-  } catch (err) {
-    console.error("recalcAttendanceRow error:", err);
-    return att;
-  }
-}
-
-/* ---------------------------
-   Auto close previous day session if no check_out
-----------------------------*/
-async function autoClosePreviousDaySession(emp) {
-  const todayKey = formatDateIST(getISTDate());
-  const todayDate = new Date(todayKey);
-
-  const last = await Attendance.findOne({
-    empId: emp._id,
-    check_in: { $exists: true, $ne: null },
-    check_out: { $in: [null, undefined] }
-  }).sort({ date: -1 });
-
-  if (!last) return;
-
-  const lastDateKey = formatDateIST(last.date);
-
-  // only auto close if last date < today
-  if (lastDateKey >= todayKey) return;
-
-  const officeEnd = emp.officeEnd || DEFAULT_OFFICE_END; // "HH:mm"
-  const officeEndTime = officeEnd.length === 5 ? `${officeEnd}:00` : officeEnd; // "HH:mm:ss"
-
-  last.check_out = officeEndTime;
-
-  try {
-    const key = lastDateKey;
-    const startDt = timeStringToISTDate(key, last.check_in);
-    const endDt = timeStringToISTDate(key, last.check_out);
-    let diff = (endDt - startDt) / (1000 * 60 * 60);
-    if (diff < 0) diff = 0;
-    last.workingHours = Number(diff.toFixed(2));
-  } catch (e) {
-    console.error("autoClose workingHours error:", e);
-    last.workingHours = 0;
-  }
-
-  last.lastActive = new Date();
-  await last.save();
-}
-
-/* ---------------------------
-   markAttendanceCheckIn
-----------------------------*/
-
-const markAttendanceCheckIn = async (req, res) => {
-  const emp = await SignUp.findById(req.body.employeeId);
-  if (!emp) return res.status(404).json({ message: "Employee not found" });
-
-  const now = new Date();
-  const dateKey = now.toISOString().split("T")[0]; // YYYY-MM-DD
-  const currentTime = now.toTimeString().slice(0, 5);
-
-  // ⭐ RULE 0: Check Holiday FIRST
-  const holiday = await Holiday.findOne({ date: new Date(dateKey) });
-  if (holiday) {
-    return res.status(400).json({
-      message: `Today is a holiday (${holiday.title}) — Attendance not allowed`,
-      isHoliday: true
-    });
-  }
-
-  // RULE 1: Allow check-in ONLY in office hours
-  if (currentTime < emp.officeStart || currentTime > emp.officeEnd) {
-    return res.status(400).json({
-      message: `You can check in only between ${emp.officeStart} - ${emp.officeEnd}`,
-    });
-  }
-
-  // RULE 2: existing attendance?
-  let attendance = await Attendance.findOne({
-    empId: emp._id,
-    date: dateKey,
-  });
-
-  if (attendance && attendance.check_in) {
-    return res.status(400).json({ message: "Already checked in today!" });
-  }
-
-  if (!attendance) {
-    attendance = new Attendance({
-      empId: emp._id,
-      date: dateKey,
-    });
-  }
-
-  attendance.check_in = now.toTimeString().slice(0, 8);
-  attendance.status = "Present";
-
-  await attendance.save();
-
-  res.json({
-    message: "Check-in successful",
-    attendance,
-  });
-};
 
 /* ---------------------------
    markAttendanceCheckOut
@@ -359,7 +47,7 @@ const markAttendanceCheckOut = async (req, res) => {
 
 
 
-
+const TIME_ZONE = "Asia/Kolkata";
 
 /* ---------------------------
    getTodayAttendance
@@ -388,6 +76,86 @@ const getTodayAttendance = async (req, res) => {
 /* ---------------------------
    getMonthlyAttendance (per employee)
 ----------------------------*/
+async function buildLeaveMapForEmployee(employeeId, start, end) {
+  const leaves = await Leave.find({
+    employeeId,
+    status: "Approved",
+    from_date: { $lte: end },
+    to_date: { $gte: start },
+  }).lean();
+
+  const leaveMap = {};
+
+  for (const lv of leaves) {
+    let from = lv.from_date < start ? new Date(start) : new Date(lv.from_date);
+    let to = lv.to_date > end ? new Date(end) : new Date(lv.to_date);
+
+    for (let dt = new Date(from); dt <= to; dt.setDate(dt.getDate() + 1)) {
+      const key = formatDateIST(dt);
+
+      leaveMap[key] = {
+        paid: !!lv.paid,
+        isHalfDay: !!lv.isHalfDay,
+        leave_type: lv.leave_type || "",
+      };
+    }
+  }
+
+  return leaveMap;
+}
+
+async function buildHolidaySet(start, end) {
+  const holidays = await Holiday.find({
+    date: { $gte: start, $lte: end },
+  }).lean();
+
+  const holidaySet = new Set();
+
+  for (const h of holidays) {
+    const key = formatDateIST(h.date);
+    holidaySet.add(key);
+  }
+
+  return holidaySet;
+}
+
+function getMonthRange(month, year) {
+  const m = Number(month);
+  const y = Number(year);
+
+  if (isNaN(m) || isNaN(y)) {
+    throw new Error("Invalid month or year");
+  }
+
+  const startDate = new Date(y, m - 1, 1, 0, 0, 0);
+  const endDate = new Date(y, m, 0, 23, 59, 59);
+
+  return { startDate, endDate };
+}
+
+function datesArray(year, month) {
+  const dates = [];
+  const y = Number(year);
+  const m = Number(month);
+
+  const totalDays = new Date(y, m, 0).getDate();
+
+  for (let d = 1; d <= totalDays; d++) {
+    const date = new Date(
+      new Date(`${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}T00:00:00`)
+        .toLocaleString("en-US", { timeZone: TIME_ZONE })
+    );
+
+    dates.push(formatDateIST(date)); // YYYY-MM-DD
+  }
+
+  return dates;
+}
+function formatDateIST(date) {
+  return new Date(date).toLocaleDateString("en-CA", {
+    timeZone: TIME_ZONE,
+  });
+}
 const getMonthlyAttendance = async (req, res) => {
   try {
     const { employeeId, month, year } = req.query;
@@ -398,17 +166,21 @@ const getMonthlyAttendance = async (req, res) => {
     const emp = await SignUp.findById(employeeId).lean();
     if (!emp) return res.status(404).json({ error: "Employee not found" });
 
-    const { start, end } = getMonthRange(Number(year), Number(month));
+    // ✅ FIX #1: correct order (month, year)
+    // ✅ FIX #2: correct destructuring names
+    const { startDate, endDate } = getMonthRange(Number(month), Number(year));
+
     const dateKeys = datesArray(Number(year), Number(month));
     const todayKey = formatDateIST(new Date());
 
     const [attendanceRecords, leaveMap, holidaySet] = await Promise.all([
       Attendance.find({
         empId: employeeId,
-        date: { $gte: start, $lte: end }
+        date: { $gte: startDate, $lte: endDate },
       }).lean(),
-      buildLeaveMapForEmployee(employeeId, start, end),
-      buildHolidaySet(start, end)
+
+      buildLeaveMapForEmployee(employeeId, startDate, endDate),
+      buildHolidaySet(startDate, endDate),
     ]);
 
     let recordMap = {};
@@ -427,7 +199,7 @@ const getMonthlyAttendance = async (req, res) => {
       unpaidLeaves: 0,
       lateCount: 0,
       lateHours: 0,
-      totalDeduction: 0
+      totalDeduction: 0,
     };
 
     for (const key of dateKeys) {
@@ -441,10 +213,9 @@ const getMonthlyAttendance = async (req, res) => {
         check_in: null,
         check_out: null,
         workingHours: 0,
-        isLateMinutes: 0
+        isLateMinutes: 0,
       };
 
-      // FUTURE DATE -> show "-" only
       if (key > todayKey) {
         output.push(row);
         continue;
@@ -452,11 +223,9 @@ const getMonthlyAttendance = async (req, res) => {
 
       const isSunday = weekday === 0;
       const isHoliday = holidaySet.has(key);
-
       const att = recordMap[key];
       const leaveInfo = leaveMap[key];
 
-      // 1) Holiday / Sunday (no leave applied)
       if (isSunday || isHoliday) {
         row.status = "Holiday";
         summary.holiday++;
@@ -464,57 +233,35 @@ const getMonthlyAttendance = async (req, res) => {
         continue;
       }
 
-      // 2) Attendance record exists
       if (att) {
         row.status = att.status || "-";
-        row.check_in = att.check_in || null;
-        row.check_out = att.check_out || null;
+        row.check_in = att.check_in;
+        row.check_out = att.check_out;
         row.workingHours = att.workingHours || 0;
         row.isLateMinutes = att.isLateMinutes || 0;
 
-        const s = (att.status || '').toLowerCase();
-        if (s === 'present') summary.present++;
-        if (s === 'absent') summary.absent++;
-        if (s === 'half day') summary.halfday++;
-        if (s === 'paid leave') summary.paidLeaves++;
-        if (s === 'unpaid leave') summary.unpaidLeaves++;
-        if (s === 'half day leave') summary.halfday++;
+        const s = row.status.toLowerCase();
+        if (s === "present") summary.present++;
+        else if (s === "absent") summary.absent++;
+        else if (s.includes("half")) summary.halfday++;
+        else if (s.includes("paid")) summary.paidLeaves++;
+        else if (s.includes("unpaid")) summary.unpaidLeaves++;
 
         if (row.isLateMinutes > 0) {
           summary.lateCount++;
           summary.lateHours += row.isLateMinutes / 60;
         }
-
-        if (att.deductionAmount) {
-          summary.totalDeduction += att.deductionAmount;
-        }
-
       } else if (leaveInfo) {
-        // 3) No attendance, but leave exists
         if (leaveInfo.isHalfDay) {
           row.status = "Half Day Leave";
           summary.halfday++;
-
-          if (leaveInfo.paid) {
-            summary.paidLeaves++;
-          } else {
-            summary.unpaidLeaves++;
-            summary.totalDeduction += perDaySalary(emp) / 2;
-          }
         } else {
           row.status = leaveInfo.paid ? "Paid Leave" : "Unpaid Leave";
-          if (leaveInfo.paid) {
-            summary.paidLeaves++;
-          } else {
-            summary.unpaidLeaves++;
-            summary.totalDeduction += perDaySalary(emp);
-          }
+          leaveInfo.paid ? summary.paidLeaves++ : summary.unpaidLeaves++;
         }
       } else {
-        // 4) Working day, past or today, no attendance, no leave => Absent
         row.status = "Absent";
         summary.absent++;
-        summary.totalDeduction += perDaySalary(emp);
       }
 
       output.push(row);
@@ -527,9 +274,10 @@ const getMonthlyAttendance = async (req, res) => {
 
   } catch (err) {
     console.error("getMonthlyAttendance error:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: err.message });
   }
 };
+
 
 /* ---------------------------
    getMonthlyAttendanceByAdmin
@@ -715,7 +463,7 @@ async function adminUpdateOfficeTiming(req, res) {
 
 module.exports = {
   getMonthlyAttendanceByAdmin,
-  markAttendanceCheckIn,
+ 
   markAttendanceCheckOut,
   getTodayAttendance,
   getMonthlyAttendance,

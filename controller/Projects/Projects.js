@@ -19,7 +19,6 @@ const createProject = async (req, res) => {
       endDate,
       projectCategory,
       notes,
-      addMember,
       projectDescription,
       clientId
     } = req.body;
@@ -34,7 +33,7 @@ const createProject = async (req, res) => {
       endDate,
       projectCategory,
       notes,
-      addMember: addMember ? JSON.parse(addMember) : [],
+      // addMember: addMember ? JSON.parse(addMember) : [],
       projectDescription,
       clientId,
       addFile: req.file ? req.file.filename : null
@@ -74,7 +73,6 @@ const getProject = async (req, res) => {
       .populate("service", "serviceName")
       .populate('addMember','ename')
       .sort({ createdAt: -1 });
-
     res.status(200).json(projects);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -86,26 +84,12 @@ const getProjectsByClient = async (req, res) => {
     const clientId = req.params.clientId;
     console.log("🔹 Client ID from params:", clientId);
 
-    // Detect if it's a valid ObjectId
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(clientId);
-
-    // Try both matching types
-    const query = isValidObjectId
-      ? { clientId: clientId } // Matches ObjectId type
-      : {
-          $or: [
-            { "clientId.leadId": clientId },
-            { leadId: clientId },
-          ],
-        };
-
-    console.log("🔹 Query used:", query);
-
-    const clientProjects = await Project.find(query)
-      .populate("clientId", "leadName emailId")
+    // SIMPLE & CORRECT QUERY
+    const clientProjects = await Project.find({ clientId })
       .populate("department", "deptName")
       .populate("service", "serviceName")
-      .populate("addMember", "ename")
+      // remove addMember populate if not defined
+      // .populate("addMember", "ename")
       .sort({ createdAt: -1 });
 
     console.log("✅ Found Projects:", clientProjects.length);
@@ -116,6 +100,7 @@ const getProjectsByClient = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const getProjectById = async (req, res) => {
   try {

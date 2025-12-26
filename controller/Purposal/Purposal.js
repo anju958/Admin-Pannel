@@ -3,13 +3,27 @@ const nodemailer = require("nodemailer");
 const path = require("path");
 const fs = require("fs");
 const multer = require("multer");
+const Company = require("../../model/CompanyDetails/CompanyDetails");
 
 // Multer memory storage for uploaded files
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // Email sending helper function
-async function sendProposalEmail({ clientEmail, clientName, title, description, category, services, terms, files = [] }) {
+
+
+async function sendProposalEmail({
+  companyEmail,
+  clientEmail,
+  clientName,
+  title,
+  description,
+  category,
+  services,
+  terms,
+  files = [],
+}) {
+  // ✅ SAME LOGIN AS INVOICE
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -18,63 +32,110 @@ async function sendProposalEmail({ clientEmail, clientName, title, description, 
     },
   });
 
-  const logoBuffer = fs.readFileSync(path.join(__dirname, "..", "uploads", "logo", "premier-logo.png"));
+  // Logo (optional)
+  const logoPath = path.join(
+    __dirname,
+    "..",
+    "uploads",
+    "logo",
+    "premier-logo.png"
+  );
 
-  const mailOptions = {
-    from: `"Premier WEBTECH" <${process.env.EMAIL_USER}>`,
+  const attachments = [...files];
+
+  if (fs.existsSync(logoPath)) {
+    attachments.push({
+      filename: "premier-logo.png",
+      content: fs.readFileSync(logoPath),
+      cid: "companylogo",
+    });
+  }
+
+  await transporter.sendMail({
+    from: `"Premier WEBTECH" <${companyEmail}>`, // 👈 exactly like screenshot
+    replyTo: companyEmail,
     to: clientEmail,
-    subject: `Proposal: ${title}`,
+    subject: `Proposal for ${clientName}`,
     html: `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
+      <div style=" font-family: Arial, sans-serif; max-width: 700px; padding: 24px; text-align: left">
+        
         <div style="text-align: center; margin-bottom: 20px;">
-          <img src="cid:companylogo" style="width:150px;" />
+          <img src="cid:companylogo" alt="Premier WebTech" style="max-width: 160px;" />
         </div>
-        <h2 style="text-align: center;">Proposal for ${clientName || "Client"}</h2>
+
+        <h2 style="text-align: center;">Proposal for ${clientName}</h2>
+
         <p><strong>Title:</strong> ${title}</p>
         <p><strong>Description:</strong> ${description}</p>
         <p><strong>Category:</strong> ${category.join(", ")}</p>
+
         <p><strong>Services:</strong></p>
         <ul>
-          ${services.map((s) => `<li>${s.name} - ₹${s.price}</li>`).join("")}
+          ${services
+            .map(
+              (s) =>
+                `<li>${s.name} - ₹${Number(s.price).toLocaleString()}</li>`
+            )
+            .join("")}
         </ul>
-       <p><strong>Total Price:</strong> ₹${services.reduce((acc, s) => acc + Number(s.price || 0), 0)}</p>
+
+        <p><strong>Total Price:</strong> ₹${services
+          .reduce((a, s) => a + Number(s.price || 0), 0)
+          .toLocaleString()}</p>
+
         <p><strong>Terms:</strong> ${terms}</p>
+
+        <br/>
+        <p>Regards,<br/>
+        <strong>Premier WEBTECH</strong></p>
       </div>
     `,
-    attachments: [
-      ...files,
-      {
-        filename: "premier-logo.png",
-        content: logoBuffer,
-        cid: "companylogo",
-      },
-    ],
-  };
-
-  await transporter.sendMail(mailOptions);
+    attachments,
+  });
 }
 
 const createAndSendProposal = async (req, res) => {
   try {
-    const { clientId, title, services, description, category, terms, clientName, clientEmail } = req.body;
+    const {
+      clientId,
+      title,
+      services,
+      description,
+      category,
+      terms,
+      clientName,
+      clientEmail,
+    } = req.body;
 
     const parsedServices = JSON.parse(services || "[]");
     const parsedCategory = JSON.parse(category || "[]");
 
-    const newProposal = new Proposal({
+    // ✅ Fetch company (same as invoice)
+    const company = await Company.findOne();
+    if (!company || !company.email) {
+      return res.status(400).json({
+        success: false,
+        message: "Company email not configured",
+      });
+    }
+
+    // Save proposal
+    const proposal = new Proposal({
       clientId,
       title,
       services: parsedServices,
       description,
       category: parsedCategory,
       terms,
-      attachments: (req.files || []).map((file) => file.originalname),
-      clientResponse: "",
+      attachments: (req.files || []).map((f) => f.originalname),
       status: "Sent",
     });
-    await newProposal.save();
 
+    await proposal.save();
+
+    // Send proposal email
     await sendProposalEmail({
+      companyEmail: company.email,
       clientEmail,
       clientName,
       title,
@@ -88,12 +149,20 @@ const createAndSendProposal = async (req, res) => {
       })),
     });
 
-    res.status(201).json({ success: true, proposal: newProposal });
+    res.status(201).json({
+      success: true,
+      message: "Proposal sent successfully",
+      proposal,
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Proposal send error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
+
 
 const updateProposal = async (req, res) => {
   try {

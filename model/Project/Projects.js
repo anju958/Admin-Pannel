@@ -11,7 +11,7 @@ const ProjectSchema = new mongoose.Schema({
     projectCategory: { type: [String], default: [] },
     clientId: { type: mongoose.Schema.Types.ObjectId, ref: "ClientLeads", required: true },
     notes: { type: String },
-    addMember: [{ type: mongoose.Schema.Types.ObjectId, ref: "SignUp" }],
+    // addMember: [{ type: mongoose.Schema.Types.ObjectId, ref: "SignUp" }],
     addFile: { type: String },
     projectDescription: { type: String },
     projectId: { type: String },

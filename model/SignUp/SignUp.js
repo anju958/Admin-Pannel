@@ -172,6 +172,10 @@ const SignUpSchema = new mongoose.Schema({
         push: { type: Boolean, default: false }
     },
     role: { type: String, enum: ["admin", "employee"], default: "employee" },
+    hasNewNotification: {
+        type: Boolean,
+        default: false
+    },
     isActive: { type: Boolean, default: true },
     employeeId: { type: String, unique: true },
 

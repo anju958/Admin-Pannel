@@ -79,6 +79,8 @@ const { getEmployeeProjectList, getEmployeeTasks, getTaskDetails, getEmployeeTas
 const { getSalaryByMonth, generateSalary, regenSalary, getSalaryHistory, requestAccess, approveAccess, getAllSalaries, regenerateSalary, markSalaryPaid, getAllEmployeesWithSalary, adminGetAllSalary, getAllEmployeeSalary}= require('../controller/UserPannel/salary/salary');
 const { getJobOpeningNotifications, markAsReadJobOpeningNotification } = require("../controller/Notification/JobOpeningNotification");
 const authMiddleware = require("../controller/middleware/authMiddleware");
+const { getEmployeesByServiceTask, getEmployeesByServiceInTask } = require("../controller/Task/Task");
+// const {  markNotificationRead, getEmployeeNotifications } = require("../controller/Notification/getEmployeeNotification");
 
 
   const Router = express.Router();
@@ -187,6 +189,10 @@ const authMiddleware = require("../controller/middleware/authMiddleware");
   Router.get("/getDepartment", getDepartments);
   Router.get('/getEmployeeByDepartment/:deptId',getEmployeesByDepartment)
   Router.get("/getServicebyDepartment/:deptId", getServicebyDepartment);
+
+  Router.get('/getEmployeesByService/:serviceId', getEmployeesByServiceInTask)
+
+
   Router.post("/addJob", Job_Opening);
   Router.delete('/deleteJob/:id',DeleteJob)
   Router.get("/get_Jobs", get_JobOpening);
@@ -222,14 +228,8 @@ const authMiddleware = require("../controller/middleware/authMiddleware");
 Router.get('/getEmplyeeTask/:employeeId' , getEmployeeTask)
 
 
-
-
-
-
   //Notification
   Router.post('/notifyTask', notifyTask)
-
-
 
   //notification 
 
@@ -249,12 +249,12 @@ Router.get('/getEmplyeeTask/:employeeId' , getEmployeeTask)
   Router.put('/updateStatus/:id',updateStatus)
 
   //permission
-  // Router.post('/user/create', requireSuperAdmin, createUser)
+ 
 
   //company details 
-  // Router.post('/companyDetails', createCompany)
-  // Router.get('/getCompnayDetails' , getCompany)
-  // Router.put('/updateCompnay/:id',updateCompany)
+
+  Router.get('/getCompnayDetails' , getCompany)
+  Router.put('/updateCompnay/:id',updateCompany)
 
 
   Router.get("/getLeadData", Get_Lead);
@@ -281,14 +281,10 @@ Router.get('/getEmplyeeTask/:employeeId' , getEmployeeTask)
   Router.get('/getLeave', getLeaves)
   Router.get('/getAllLeaves/:employeeId', getAllLeaves)
   Router.get('/admin/getAllLeave', getAllLeavesAdmin)
-  // Router.get('/getMonthlyAcceptedLeaves/:employeeId',getMonthlyAcceptedLeaves)
+  
   Router.put('/admin/updateLeaveStatus/:leaveId', updateLeaveStatus)
 
-  // Router.get('/getTotalProjects/:employeeId', getTotalProjects)
-
-
-  // Router.get('/getSalaryStats/:employeeId/:month/:year',getSalaryStats)
-  // Router.get('/getSalaryDetails/:employeeId',getSalaryDetails)
+ 
 
 
   Router.post("/userLogin", UserLogin);
@@ -299,7 +295,7 @@ Router.get('/getEmplyeeTask/:employeeId' , getEmployeeTask)
 
   //forget password 
   Router.post("/forget-password", forgotPassword)
-  // Router.post('/reset-password/:token',resetEmployeePassword)
+  
   Router.post("/reset-password/:token", resetUserPassword)
 
 
@@ -309,7 +305,7 @@ Router.get('/getEmplyeeTask/:employeeId' , getEmployeeTask)
 Router.get('/employee/IsHoliday',isHoliday)
 
 
-  // Router.post('/logout' ,logoutEmployee)
+ 
   Router.post("/checkout", async (req, res) => {
     try {
       const { employeeId } = req.body;
@@ -324,9 +320,6 @@ Router.get('/employee/IsHoliday',isHoliday)
 
 
 
-  //salary routes
-  // Router.post('/generate-salary/:empId',generateSalary)
-  // Router.post('/regen-salary/:empId' , regenSalary)
   Router.use("/tasks", taskRoutes);
 
   //client Routes
@@ -351,7 +344,7 @@ Router.get('/employee/IsHoliday',isHoliday)
 
   // Update employee office timing (admin)
   Router.put('/updateOfficeTiming/:employeeId',adminUpdateOfficeTiming)
-  // Router.post('/bulkUpdateOfficeTiming',bulkUpdateOfficeTiming)
+  
 
 //Salary api
 Router.get('/month/:empId', getSalaryByMonth)
@@ -362,7 +355,7 @@ Router.post('/salary/requestAccess',requestAccess);
 Router.put('/salary/approveAccess/:requestId',approveAccess)
 Router.get('/salary/all/sal' , getAllSalaries);
 
-// Router.put('/salary/regen/bulk', bulkRegenerate);
+
 
 Router.put('/salary/regen/:empId',regenerateSalary)
 Router.put('/salary/update/:id',markSalaryPaid)
