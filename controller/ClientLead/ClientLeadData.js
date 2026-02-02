@@ -5,11 +5,18 @@ const bcrypt = require('bcrypt');
 const fs = require("fs");
 const path = require("path");
 const jwt = require('jsonwebtoken'); 
-
+const createRoleBasedNotification = require(
+  "../../utils/createRoleBasedNotification"
+);
 
 
 const Gen_ClientLead = async (req, res) => {
   try {
+    // 🔐 Ensure auth
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const {
       leadName, emailId, phoneNo, sourse,
       department, service, project_type,
@@ -18,7 +25,7 @@ const Gen_ClientLead = async (req, res) => {
       userType
     } = req.body;
 
-    // check duplicate by email
+    // ✅ check duplicate by email
     const user = await ClientLeadData.findOne({ emailId });
     if (user) {
       return res.status(400).json({ message: "User Already Exists" });
@@ -32,12 +39,31 @@ const Gen_ClientLead = async (req, res) => {
       assign, userType
     });
 
-    await newClient.save();
-    res.status(200).json({ message: "User Added Successfully" });
+    const savedLead = await newClient.save();
+
+    /* 🔔 ROLE-BASED NOTIFICATION */
+    await createRoleBasedNotification({
+      type: "CLIENT_LEAD_CREATED",
+      title: "New Client Lead Added",
+      message: `${leadName} client lead was created by ${req.user.role}`,
+      module: "client-lead",
+      refId: savedLead._id,
+      actorUserId: req.user.id,               // JWT id
+      actorRole: req.user.role.toLowerCase(), // normalized
+    });
+
+    res.status(200).json({
+      message: "User Added Successfully",
+      lead: savedLead,
+    });
+
   } catch (error) {
+    console.error("Client Lead Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 const Get_ClientLead = async (req, res) => {
     try {

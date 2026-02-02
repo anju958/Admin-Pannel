@@ -2,37 +2,81 @@ const JobOpening = require('../../model/JobOpening/JobOpening')
 const JobOpeningNotification = require('../../model/Notification/JobOpeningNotification')
 const Department = require("../../model/Department/AddDepartment");
 const Service = require("../../model/Services/Service");
+const createRoleBasedNotification = require(
+  "../../utils/createRoleBasedNotification"
+);
+  
 
 const Job_Opening = async (req, res) => {
   try {
-    const { department, service, no_of_Opening, selected_emp, mini_salary, max_salary, skills, job_des, job_type, opend_Date, close_date } = req.body;
+    // 🔐 Ensure auth
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const {
+      department,
+      service,
+      no_of_Opening,
+      selected_emp,
+      mini_salary,
+      max_salary,
+      skills,
+      job_des,
+      job_type,
+      opend_Date,
+      close_date
+    } = req.body;
+
+    // 1️⃣ Create Job
     const new_job = new JobOpening({
-      department, service, no_of_Opening, selected_emp, mini_salary, max_salary, skills, job_des, job_type, opend_Date, close_date
-    })
+      department,
+      service,
+      no_of_Opening,
+      selected_emp,
+      mini_salary,
+      max_salary,
+      skills,
+      job_des,
+      job_type,
+      opend_Date,
+      close_date,
+    });
 
     const save_job = await new_job.save();
-    // 🔔 CREATE NOTIFICATION FOR ADMIN ONLY
-    
+
     // 2️⃣ Get department & service names
     const departmentData = await Department.findById(department).select("deptName");
     const serviceData = await Service.findById(service).select("serviceName");
 
     const departmentName = departmentData?.deptName || "Department";
     const serviceName = serviceData?.serviceName || "Service";
-    await JobOpeningNotification.create({
+
+    // 🔔 ROLE-BASED NOTIFICATION (NEW SYSTEM)
+    await createRoleBasedNotification({
+      type: "JOB_CREATED",
       title: `New Job Opened – ${departmentName} / ${serviceName}`,
       message: `Vacancy: ${no_of_Opening} position(s) available`,
-      targetRole: "admin",
+      module: "job",
+      refId: save_job._id,
+      actorUserId: req.user.id,               // JWT id
+      actorRole: req.user.role.toLowerCase(), // normalized role
     });
-    return res.status(200).json({ message: "Job Added " })
+
+    return res.status(200).json({
+      message: "Job added successfully",
+      data: save_job,
+    });
 
   } catch (error) {
-
-    console.log(error.message)
-    res.status(500).json({ message: error.message })
+    console.error("Job Opening Error:", error);
+    res.status(500).json({ message: error.message });
   }
+};
 
-}
+
+
+
 const get_JobOpening = async (req, res) => {
   try {
     const getData = await JobOpening.find()
@@ -46,8 +90,14 @@ const get_JobOpening = async (req, res) => {
   }
 };
 
+
 const DeleteJob = async (req, res) => {
   try {
+    // 🔐 Ensure auth
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const jobId = req.params.id;
 
     const deletedJob = await JobOpening.findByIdAndDelete(jobId);
@@ -56,12 +106,27 @@ const DeleteJob = async (req, res) => {
       return res.status(404).json({ message: "Job not found" });
     }
 
-    res.status(200).json({ message: "Job deleted successfully", deletedJob });
+    // 🔔 ROLE-BASED NOTIFICATION
+    await createRoleBasedNotification({
+      type: "JOB_DELETED",
+      title: "Job Deleted",
+      message: `A job opening was deleted by ${req.user.role}`,
+      module: "job",
+      refId: deletedJob._id,
+      actorUserId: req.user.id,               // JWT id
+      actorRole: req.user.role.toLowerCase(), // normalized
+    });
+
+    res.status(200).json({
+      message: "Job deleted successfully",
+      deletedJob,
+    });
 
   } catch (error) {
-    console.error(err);
-    res.status(500).json({ message: "Server error", error: err.message });
-
+    console.error("Delete Job Error:", error);
+    res.status(500).json({ message: "Server error" });
   }
-}
+};
+
+
 module.exports = { Job_Opening, get_JobOpening, DeleteJob } 

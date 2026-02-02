@@ -87,7 +87,7 @@ const { getEmployeesByServiceTask, getEmployeesByServiceInTask } = require("../c
 
   // ---------- FILE UPLOAD ROUTES ----------
   Router.post(
-    "/signUp",
+    "/signUp", authMiddleware,
     uploadTo().fields([
       { name: "resumeFile", maxCount: 1 },
       { name: "img", maxCount: 1 },
@@ -117,7 +117,7 @@ const { getEmployeesByServiceTask, getEmployeesByServiceInTask } = require("../c
   Router.post("/addProject", uploadTo().single("addFile"), createProject);
 
   Router.put(
-    "/updateSignUser/:employeeId",
+    "/updateSignUser/:employeeId",authMiddleware,
     uploadTo().fields([
       { name: "resumeFile", maxCount: 1 },
       { name: "img", maxCount: 1 },
@@ -185,7 +185,7 @@ const { getEmployeesByServiceTask, getEmployeesByServiceInTask } = require("../c
   Router.get('/employee/working-hours',getWorkingHours)
 
   Router.get("/getemployeeData", getEmployeeData);
-  Router.post("/addDepartment", addDepartment);
+  Router.post("/addDepartment", authMiddleware ,  addDepartment);
   Router.get("/getDepartment", getDepartments);
   Router.get('/getEmployeeByDepartment/:deptId',getEmployeesByDepartment)
   Router.get("/getServicebyDepartment/:deptId", getServicebyDepartment);
@@ -193,18 +193,18 @@ const { getEmployeesByServiceTask, getEmployeesByServiceInTask } = require("../c
   Router.get('/getEmployeesByService/:serviceId', getEmployeesByServiceInTask)
 
 
-  Router.post("/addJob", Job_Opening);
-  Router.delete('/deleteJob/:id',DeleteJob)
+  Router.post("/addJob", authMiddleware, Job_Opening);
+  Router.delete('/deleteJob/:id',authMiddleware, DeleteJob)
   Router.get("/get_Jobs", get_JobOpening);
-  Router.put('/updateDepartment/:id',updateDepartment)
-  Router.delete('/deleteDepartment/:id', deleteDepartment)
+  Router.put('/updateDepartment/:id', authMiddleware , updateDepartment)
+  Router.delete('/deleteDepartment/:id', authMiddleware, deleteDepartment)
   Router.get('/getDepartmentById/:id',getDepartmentByid)
-  Router.post("/addService", addService);
+  Router.post("/addService", authMiddleware,  addService);
   Router.get("/getServices", getAllServices);
   Router.get('/getServiceById/:id',getServicebyId)
   Router.get("/serviceById/:deptId", getServicesByDept);
-  Router.delete('/deleteService/:id',deleteService)
-  Router.put('/UpdateService/:id',updateService)
+  Router.delete('/deleteService/:id', authMiddleware, deleteService)
+  Router.put('/UpdateService/:id', authMiddleware, updateService)
   Router.get("/getProjects", getProject);
   Router.put('/updateProject/:id',updateProject)
   Router.get("/getProjectById/:clientId/:projectId", getProjectById);
@@ -218,9 +218,9 @@ const { getEmployeesByServiceTask, getEmployeesByServiceInTask } = require("../c
 
 
   Router.get('/getTraineeData',getTraineeData)
-  Router.delete("/deleteSignUpUser/:employeeId", deleteUser);
+  Router.delete("/deleteSignUpUser/:employeeId", authMiddleware, deleteUser);
   Router.put("/movetoemployee/:employeeId", UpdateType);
-  Router.post("/genClientLead", Gen_ClientLead);
+  Router.post("/genClientLead", authMiddleware, Gen_ClientLead);
   Router.get("/getClientLead", Get_ClientLead);
   Router.get('/employeeListProject',getEmployeeProjectList)
   Router.get('/tasks/employee/:employeeId',getEmployeeTasks)
@@ -267,7 +267,7 @@ Router.get('/getEmplyeeTask/:employeeId' , getEmployeeTask)
   //client routes
   Router.put("/moveleadtoClient/:leadId", ConvertToClient);
   Router.delete("/DeleteLead/:leadId", deleteLead);
-  Router.put("/updateClientLead/:leadId", updateClientUser);
+  Router.put("/updateClientLead/:leadId", authMiddleware,updateClientUser);
   Router.delete("/deleteClientLead/:leadId", deleteClientUser);
   Router.get("/getClientLeadbyId/:leadId", getClientLeadById);
   Router.post('/client/send-password-otp',sendPasswordSetupOtp);

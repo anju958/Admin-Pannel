@@ -19,10 +19,12 @@ const {
   updateTaskStatus,
   addComment,
   serveAttachment,
-  autoStopTimer
+  autoStopTimer,
+  getTaskStatusHistoryForAdmin,
+  getStatusAttachmentForAdmin
 } = require("../../controller/Task/Task");
-const { notifyEmployees } = require("../../controller/Notification/adminNotify");
-const { getAdminMessagesByTask } = require("../../controller/Notification/getEmployeeNotification");
+const { notifyEmployees, getUnreadCount } = require("../../controller/Notification/adminNotify");
+const { getAdminMessagesByTask, getTaskNotificationForEmployee, markNotificationRead } = require("../../controller/Notification/getEmployeeNotification");
 
 
 
@@ -117,12 +119,24 @@ router.get("/notifications/:employeeId", async (req, res) => {
   res.json(data);
 });
 
-
+//admin add comment notification acc to task 
+router.get('/emplyeeGetNotification/:employeeId',getUnreadCount)
+router.put('/employeeRead/:id',markNotificationRead)
 router.post("/notify/:taskId", notifyEmployees);
+
 
 router.get(
   "/adminMessages/:taskId",
   getAdminMessagesByTask
 );
 
+router.get(
+  "/statusHistoryForAdmin/:taskId",
+  getTaskStatusHistoryForAdmin
+);
+
+router.get(
+  "/admin/status-attachment/:taskId/:index",
+  getStatusAttachmentForAdmin
+);
 module.exports = router;

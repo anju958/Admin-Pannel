@@ -1,4 +1,5 @@
 const Notification = require("../../model/Notification/Notification");
+const NotificationComment = require('../../model/Notification/adminNotification')
 const SignUp = require("../../model/SignUp/SignUp");
 const mongoose = require("mongoose");
 
@@ -55,7 +56,7 @@ const getUnreadCount = async (req, res) => {
 
     const userId = employeeId;
 
-    const notifications = await Notification.find({
+    const notifications = await NotificationComment.find({
       $or: [
         { allUsers: true },
         { "users.userId": userId }
@@ -97,7 +98,7 @@ const markAllReadInEmp = async (req, res) => {
 
     const userId = employeeId;
 
-    const notifications = await Notification.find({
+    const notifications = await NotificationComment.find({
       $or: [
         { allUsers: true },
         { "users.userId": userId }

@@ -1,17 +1,24 @@
 const jwt = require("jsonwebtoken");
+const User = require("../../model/Users/Users");
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1];
+    const authHeader = req.headers.authorization;
 
-    if (!token) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ message: "No token provided" });
     }
 
+    const token = authHeader.split(" ")[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // 🔥 THIS LINE IS REQUIRED
-    req.user = decoded;
+    const user = await User.findById(decoded.id).select("_id role");
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    req.user = user; // ✅ real mongoose document
 
     next();
   } catch (error) {

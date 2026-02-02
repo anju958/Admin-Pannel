@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Task = require("../../model/Task/Task");
 const SignUp = require("../../model/SignUp/SignUp");
 const Project = require('../../model/Project/Projects')
+const Notification = require('../../model/Notification/adminNotification')
 const path = require("path");
 const fs = require("fs");
 
@@ -33,24 +34,45 @@ const addTask = async (req, res) => {
       return res.status(400).json({ message: "Required fields missing!" });
     }
 
-    const newTask = new Task({
-      clientId,
-      projectId,
-      serviceId,
-      departmentId,
-      assignedTo,
-      title,
-      category,
-      startDate,
-      dueDate,
-      status: status || "Pending",
-      description,
-      priority: priority || "Low",
-      estimatedTime: estimatedTime || 0,
-      timeSpent: 0,
-      timeLogs: [],
-      comments: []
-    });
+    // const newTask = new Task({
+    //   clientId,
+    //   projectId,
+    //   serviceId,
+    //   departmentId,
+    //   assignedTo,
+    //   title,
+    //   category,
+    //   startDate,
+    //   dueDate,
+    //   status: status || "Pending",
+    //   description,
+    //   priority: priority || "Low",
+    //   estimatedTime: estimatedTime || 0,
+    //   timeSpent: 0,
+    //   timeLogs: [],
+    //   comments: []
+    // });
+
+const newTask = new Task({
+  clientId,
+  projectId,
+  serviceId,
+  departmentId,
+  assignedTo,
+  title,
+  category,
+  startDate,
+  dueDate,
+  status: status || "Pending",
+  description,
+  priority: priority || "Low",
+  estimatedTime: estimatedTime || 0,
+  timeSpent: 0,
+  timeLogs: [],
+  comments: [],
+  statusHistory: [],   // ✅ ADD THIS
+});
+
 
     const saveTask = await newTask.save();
     return res.status(200).json({ message: "Task Assigned Successfully ✅", task: saveTask });
@@ -319,15 +341,57 @@ const stopTimer = async (req, res) => {
 };
 
 // ---------- Update Task Status (employee/admin) ----------
+// const updateTaskStatus = async (req, res) => {
+//   try {
+//     const { taskId } = req.params;
+//     const { status, reason, progress } = req.body;
+
+//     const task = await Task.findById(taskId);
+//     if (!task) {
+//       return res.status(404).json({ message: "Task not found" });
+//     }
+
+//     task.status = status;
+
+//     task.statusHistory.push({
+//       status,
+//       reason,
+//       progress: status === "In Progress" ? Number(progress) : undefined,
+//       attachment: req.file ? req.file.path : null,
+//       updatedAt: new Date(),
+//     });
+
+//     if (status === "Completed") {
+//       task.completedOn = new Date();
+//     }
+
+//     await task.save();
+
+//     res.json({ success: true });
+//   } catch (err) {
+//     console.error("STATUS UPDATE ERROR:", err);
+//     res.status(500).json({
+//       message: "Status update failed",
+//       error: err.message,
+//     });
+//   }
+// };
+
 const updateTaskStatus = async (req, res) => {
   try {
     const { taskId } = req.params;
     const { status, reason, progress } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid taskId" });
+    }
+
     const task = await Task.findById(taskId);
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
+
+    if (!task.statusHistory) task.statusHistory = [];
 
     task.status = status;
 
@@ -348,10 +412,7 @@ const updateTaskStatus = async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("STATUS UPDATE ERROR:", err);
-    res.status(500).json({
-      message: "Status update failed",
-      error: err.message,
-    });
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -362,9 +423,12 @@ const addComment = async (req, res) => {
     const { taskId } = req.params;
     const { userId, text } = req.body;
 
-    const task = await Task.findById(taskId);
-    if (!task) return res.status(404).json({ message: "Task not found" });
+    const task = await Task.findById(taskId).populate("assignedTo");
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
 
+    // ✅ SAME COMMENT OBJECT (UNCHANGED)
     const comment = {
       user: userId,
       text,
@@ -372,15 +436,29 @@ const addComment = async (req, res) => {
     };
 
     if (req.file) {
-      // save file path inside comment
       comment.attachment = `uploads/comments/${req.file.filename}`;
     }
 
     task.comments.push(comment);
     await task.save();
 
+    // 🔔 RESTORED: CREATE NOTIFICATION (THIS WAS MISSING)
+    if (task.assignedTo?.length) {
+      for (const emp of task.assignedTo) {
+        await Notification.create({
+          user: emp._id,
+          task: task._id,
+          title: "New Admin Comment",
+          message: text,
+          isRead: false
+        });
+      }
+    }
+
     res.json({ success: true, comment });
+
   } catch (err) {
+    console.error("Add comment error:", err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -447,6 +525,58 @@ const autoStopTimer = async (req, res) => {
   }
 };
 
+const getTaskStatusHistoryForAdmin = async (req, res) => {
+  try {
+    const { taskId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return res.status(400).json({ message: "Invalid taskId" });
+    }
+
+    const task = await Task.findById(taskId)
+      .select("status statusHistory updatedAt");
+
+    if (!task) {
+      return res.status(404).json({ message: "Task not found" });
+    }
+
+    res.json({
+      status: task.status,
+      statusHistory: task.statusHistory || [],
+      updatedAt: task.updatedAt,
+    });
+  } catch (err) {
+    console.error("STATUS HISTORY ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+const getStatusAttachmentForAdmin = async (req, res) => {
+  try {
+    const { taskId, index } = req.params;
+
+    const task = await Task.findById(taskId);
+
+    if (!task || !task.statusHistory?.length) {
+      return res.status(404).send("No status history");
+    }
+
+    const status = task.statusHistory[index];
+
+    if (!status || !status.attachment) {
+      return res.status(404).send("Attachment not found");
+    }
+
+    const filePath = path.join(process.cwd(), status.attachment);
+
+    return res.sendFile(filePath);
+  } catch (err) {
+    console.error("ADMIN ATTACHMENT ERROR:", err);
+    res.status(500).send("Unable to load file");
+  }
+};
+
+
+
 module.exports = {
   addTask,
   getAllTasks,
@@ -462,5 +592,7 @@ module.exports = {
   addComment,
   serveAttachment,
   getEmployeesByServiceInTask,
-  autoStopTimer
+  autoStopTimer,
+  getTaskStatusHistoryForAdmin,
+  getStatusAttachmentForAdmin
 };

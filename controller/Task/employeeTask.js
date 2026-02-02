@@ -51,13 +51,16 @@ const getEmployeeTasks = async (req, res) => {
       .populate("clientId", "leadName");
 
     const formattedTasks = tasks.map(t => ({
-      taskId: t._id,
-      taskName: t.title,                // ✅ map title → taskName
-      projectName: t.projectId?.projectName || "",
+      _id: t._id,                 // ✅ REQUIRED
+      title: t.title,
+      projectId: t.projectId,
+      clientId: t.clientId,
       status: t.status,
-      priority: t.priority
+      priority: t.priority,
+      timeLogs: t.timeLogs,
+      timeSpent: t.timeSpent,
+      updatedAt: t.updatedAt,
     }));
-
     res.json({
       employee,
       tasks: formattedTasks
@@ -142,4 +145,4 @@ const getEmployeeTask = async (req, res) => {
 };
 
 
-module.exports = { getEmployeeProjectList ,   getEmployeeTasks ,  getTaskDetails , getEmployeeTask} 
+module.exports = { getEmployeeProjectList, getEmployeeTasks, getTaskDetails, getEmployeeTask } 

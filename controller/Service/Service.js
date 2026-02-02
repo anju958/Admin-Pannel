@@ -1,19 +1,33 @@
   const Service = require('../../model/Services/Service');
   const Department = require('../../model/Department/AddDepartment');
   const Project = require('../../model/Project/Projects')
+  const createRoleBasedNotification = require(
+    "../../utils/createRoleBasedNotification"
+  );
 
-  const addService = async (req, res) => {
+const addService = async (req, res) => {
   try {
+    // 🔐 Ensure auth
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
     const { serviceName, servicePrice, deptId } = req.body;
 
     if (!serviceName || !deptId || !servicePrice) {
-      return res.status(400).json({ success: false, message: "All fields are required" });
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
     }
 
     // Check department
     const department = await Department.findById(deptId);
     if (!department) {
-      return res.status(404).json({ success: false, message: "Department not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Department not found",
+      });
     }
 
     // Duplicate check (case insensitive)
@@ -30,8 +44,24 @@
     }
 
     // Save new service
-    const newService = new Service({ serviceName, servicePrice, deptId });
+    const newService = new Service({
+      serviceName,
+      servicePrice,
+      deptId,
+    });
+
     const savedService = await newService.save();
+
+    /* 🔔 ROLE-BASED NOTIFICATION */
+    await createRoleBasedNotification({
+      type: "SERVICE_CREATED",
+      title: "New Service Added",
+      message: `Service "${serviceName}" was added under "${department.deptName}" by ${req.user.role}`,
+      module: "service",
+      refId: savedService._id,
+      actorUserId: req.user.id,               // JWT id
+      actorRole: req.user.role.toLowerCase(), // normalized
+    });
 
     res.status(201).json({
       success: true,
@@ -40,10 +70,12 @@
     });
   } catch (error) {
     console.error("Error adding service:", error);
-    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
 };
-
 
   const getServicesByDept = async (req, res) => {
     try {
@@ -80,41 +112,86 @@
   }
   }
 
-  const deleteService = async(req , res)=>{
-     try {
+  const deleteService = async (req, res) => {
+  try {
+    // 🔐 Ensure auth context
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const { id } = req.params;
-    const deleted = await Service.findByIdAndDelete(id);
-    if (!deleted) return res.status(404).json({ message: "Service not found" });
+
+    const deletedService = await Service.findByIdAndDelete(id);
+
+    if (!deletedService) {
+      return res.status(404).json({ message: "Service not found" });
+    }
+
+    /* 🔔 ROLE-BASED NOTIFICATION */
+    await createRoleBasedNotification({
+      type: "SERVICE_DELETED",
+      title: "Service Deleted",
+      message: `Service "${deletedService.serviceName}" was deleted by ${req.user.role}`,
+      module: "service",
+      refId: deletedService._id,
+      actorUserId: req.user.id,               // ✅ JWT id
+      actorRole: req.user.role.toLowerCase(), // ✅ normalized
+    });
+
     res.json({ message: "Service deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Delete Service Error:", err);
+    res.status(500).json({ message: "Server Error" });
   }
-  }
-  
-  const updateService = async (req, res) => {
+};
+
+
+
+const updateService = async (req, res) => {
   try {
+    // 🔐 Ensure auth context
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const { id } = req.params;
-      console.log("Updating Service ID:", id);
     const { serviceName, servicePrice, deptId } = req.body;
 
-    // Find service by ID and update
+    if (!serviceName || !servicePrice || !deptId) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Update service
     const updatedService = await Service.findByIdAndUpdate(
       id,
       { serviceName, servicePrice, deptId },
-      { new: true } // return updated document
+      { new: true, runValidators: true }
     );
 
     if (!updatedService) {
       return res.status(404).json({ message: "Service not found" });
     }
 
-    res.json({ message: "Service updated successfully", data: updatedService });
+    /* 🔔 ROLE-BASED NOTIFICATION */
+    await createRoleBasedNotification({
+      type: "SERVICE_UPDATED",
+      title: "Service Updated",
+      message: `Service "${serviceName}" was updated by ${req.user.role}`,
+      module: "service",
+      refId: updatedService._id,
+      actorUserId: req.user.id,               // ✅ JWT id
+      actorRole: req.user.role.toLowerCase(), // ✅ normalized
+    });
+
+    res.json({
+      message: "Service updated successfully",
+      data: updatedService,
+    });
   } catch (err) {
-    console.error(err);
+    console.error("Update Service Error:", err);
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 const getServiceByProject = async (req, res) => {
   try {

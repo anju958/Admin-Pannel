@@ -7,7 +7,10 @@
   require("./cronJobs/monthlySalaryCron");
   require("./cronJobs/autoAbsentCron");
   require("./cronJobs/autoLeaveMarkCron");
+  //neeww add
+  // const { initSocket } = require("./socket");
 const notificationRoutes = require("./Routes/notificationRoutes");
+const notificationForAllRoutes = require("./Routes/notificationForAllRoutes");
 
   const path = require('path');
   const chatRoutes = require("./Routes/chat.routes");
@@ -22,6 +25,10 @@ const notificationRoutes = require("./Routes/notificationRoutes");
 
   const Router = require('./Routes/Routes');
   app.use("/api/notifications", notificationRoutes);
+  app.use("/api/notifications-all", notificationForAllRoutes);
+  const normalizePermissions = require("./controller/middleware/normalizePermissions");
+  const authMiddleware =require('./controller/middleware/authMiddleware')
+
 
   const PORT = process.env.PORT || 5000;
   const URL = process.env.MONGO_URL;
@@ -31,6 +38,9 @@ const notificationRoutes = require("./Routes/notificationRoutes");
     .then(() => console.log('✅ MongoDB is connected'))
     .catch((err) => console.log('❌ Server Error', err));
     require('./cronJobs/attendanceCron')
+
+// app.use(authMiddleware);
+app.use(normalizePermissions);
 
   // Routes
   app.use('/api', Router);
@@ -52,3 +62,5 @@ const notificationRoutes = require("./Routes/notificationRoutes");
   server.listen(PORT, () => {
     console.log(`🚀 Server + Socket running on port ${PORT}`);
   });
+
+  
